@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#070b12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>PipPulse Gold</title>
+<style>
+:root{
+  --bg:#070b12;--surface:#0d141f;--surface2:#111a28;--line:#1e2a3c;
+  --text:#e8eef7;--muted:#8fa1b8;--gold:#f5c451;--green:#22c55e;--red:#ef4444;
+  --radius:18px;--safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-top:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);min-height:100vh;padding-bottom:calc(78px + var(--safe-bottom));
+  overscroll-behavior-y:contain;
+}
+.app{max-width:520px;margin:auto;min-height:100vh;position:relative}
+.topbar{
+  position:sticky;top:0;z-index:40;background:rgba(7,11,18,.92);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);padding:calc(12px + var(--safe-top)) 16px 12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px
+}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:900;color:#10151d;background:linear-gradient(135deg,var(--gold),#b8860b);overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:cover}
+.brand h1{margin:0;font-size:16px}
+.brand span{display:block;font-size:10px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase}
+.badge{font-size:10px;padding:6px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.trial{color:#8ff0b5;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)}
+.badge.locked{color:#ffb4b4;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.08)}
+.badge.admin{color:#ffe6ad;border-color:rgba(245,196,81,.35);background:rgba(245,196,81,.08)}
+.screen{padding:16px}
+.hero{
+  border:1px solid var(--line);border-radius:22px;overflow:hidden;position:relative;
+  min-height:210px;display:flex;align-items:flex-end;background:var(--surface);background-size:cover;background-position:center
+}
+.hero-content{position:relative;z-index:2;padding:18px;width:100%;background:linear-gradient(0deg,rgba(7,11,18,.95),rgba(7,11,18,.15))}
+.hero-content h2{font-size:23px;line-height:1.2;margin:0 0 8px}
+.hero-content p{margin:0;color:#d7e1ee;font-size:13px;line-height:1.55}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.card h3{margin:0 0 4px;font-size:16px}
+.sub{color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.5}
+.btn{
+  width:100%;border:1px solid var(--line);background:var(--surface2);color:var(--text);
+  padding:14px;border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;transition:.15s
+}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(135deg,var(--gold),#d9a520);color:#151a10;border:none}
+.btn.ghost{background:transparent}
+.btn.danger{color:#ffb4b4;border-color:rgba(239,68,68,.4)}
+.btn.small{width:auto;padding:9px 12px;font-size:12px;border-radius:10px}
+label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 6px}
+input,select,textarea{
+  width:100%;background:#0a111b;border:1px solid var(--line);color:var(--text);
+  padding:14px;border-radius:14px;font-size:16px;outline:none;appearance:none
+}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,196,81,.12)}
+textarea{min-height:100px;resize:vertical}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.signal{background:var(--surface2);border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px}
+.signal.locked{filter:blur(7px);pointer-events:none;user-select:none}
+.signal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pair{font-weight:800;font-size:16px}
+.time{font-size:10px;color:var(--muted);margin-top:3px}
+.tag{font-size:10px;font-weight:800;padding:6px 9px;border-radius:999px;text-transform:uppercase;white-space:nowrap}
+.buy{color:#8ff0b5;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35)}
+.sell{color:#ffb4b4;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35)}
+.pending{color:#ffe6ad;background:rgba(245,196,81,.1);border:1px solid rgba(245,196,81,.35)}
+.closed{color:#a9b7ca;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.signal-img{width:100%;max-height:260px;object-fit:contain;background:#05080d;border-radius:14px;border:1px solid var(--line);margin-top:12px}
+.levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.level{background:#0a111b;border:1px solid var(--line);border-radius:12px;padding:10px}
+.level span{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.level b{font-size:14px}
+.notes{margin-top:12px;color:#c8d4e3;font-size:13px;line-height:1.55}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px;font-size:13px;line-height:1.5}
+.plan{background:#0a111b;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.plan-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.plan h4{margin:0;font-size:15px}
+.price{font-size:22px;font-weight:900;color:var(--gold)}
+.plan small{display:block;color:var(--muted);margin-top:4px}
+.plan .btn{margin-top:12px}
+.disclaimer{
+  border:1px solid rgba(245,196,81,.25);background:rgba(245,196,81,.06);color:#ffe6ad;
+  padding:12px;border-radius:14px;font-size:11px;line-height:1.55;margin-top:14px
+}
+.bottom-nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(7,11,18,.96);
+  backdrop-filter:blur(18px);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(3,1fr);
+  padding:8px 8px calc(8px + var(--safe-bottom))
+}
+.nav-btn{
+  background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;
+  display:grid;place-items:center;gap:4px;padding:7px 0;border-radius:12px;cursor:pointer
+}
+.nav-btn span{font-size:19px}
+.nav-btn.active{color:var(--gold);background:rgba(245,196,81,.08)}
+.sheet{
+  position:fixed;inset:0;z-index:90;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(3,6,10,.78);backdrop-filter:blur(5px)
+}
+.sheet.show{display:flex}
+.sheet-box{
+  width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--surface);
+  border-radius:24px 24px 0 0;border:1px solid var(--line);border-bottom:none;
+  padding:20px 18px calc(24px + var(--safe-bottom));animation:up .25s ease
+}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.sheet-handle{width:44px;height:5px;border-radius:99px;background:#2b3a4f;margin:0 auto 16px}
+.sheet h3{margin:0 0 6px;font-size:19px}
+.toast{
+  position:fixed;left:16px;right:16px;bottom:calc(88px + var(--safe-bottom));z-index:100;
+  background:var(--surface2);border:1px solid var(--line);padding:14px;border-radius:14px;
+  font-size:13px;text-align:center;opacity:0;transform:translateY(15px);transition:.25s
+}
+.toast.show{opacity:1;transform:translateY(0)}
+.image-preview{margin-top:10px;max-width:100%;max-height:180px;border-radius:14px;border:1px solid var(--line);object-fit:contain;background:#05080d}
+.upload-status{font-size:11px;color:var(--muted);margin-top:6px}
+.payment-box{background:#0a111b;border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:14px;font-size:13px;line-height:1.6}
+.copy{margin-top:12px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo" id="brandLogo">P</div>
+      <div><h1>PipPulse Gold</h1><span>XAUUSD Signals</span></div>
+    </div>
+    <div class="badge trial" id="accessBadge">Free: 3 Trades</div>
+  </div>
+
+  <!-- SIGNALS SCREEN -->
+  <div class="screen" id="screen-signals">
+    <div class="hero" id="heroCard">
+      <div class="hero-content">
+        <h2 id="heroHeadline">Professional XAUUSD signals.</h2>
+        <p id="heroDescription">Try your first 3 signals free. Upgrade for full access to every trade plan.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Latest Signals</h3>
+      <p class="sub">Only published XAUUSD signals appear here.</p>
+      <div id="signalFeed"></div>
+    </div>
+  </div>
+
+  <!-- PLANS SCREEN -->
+  <div class="screen hidden" id="screen-plans">
+    <div class="card">
+      <h3>Choose Premium Access</h3>
+      <p class="sub">Ghanaians pay in GH₵ through Mobile Money. International subscribers pay in USDT.</p>
+
+      <div class="plan">
+        <div class="plan-top">
+          <div><h4>1 Month</h4><small>Full signal access</small></div>
+          <div class="price">GH₵50<br><small style="color:var(--muted);font-weight:500">$10</small></div>
+        </div>
+        <button class="btn primary" onclick="choosePlan('monthly')">Choose 1 Month</button>
+      </div>
+
+      <div class="plan">
+        <div class="plan-top">
+          <div><h4>5 Months</h4><small>Best value for active traders</small></div>
+          <div class="price">GH₵160<br><small style="color:var(--muted);font-weight:500">$30</small></div>
+        </div>
+        <button class="btn primary" onclick="choosePlan('five-month')">Choose 5 Months</button>
+      </div>
+
+      <div class="plan">
+        <div class="plan-top">
+          <div><h4>Lifetime</h4><small>One-time payment</small></div>
+          <div class="price">GH₵850<br><small style="color:var(--muted);font-weight:500">$150</small></div>
+        </div>
+        <button class="btn primary" onclick="choosePlan('lifetime')">Choose Lifetime</button>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Risk disclosure:</strong> Signals are educational market commentary, not financial advice. Gold trading carries substantial risk.
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT SCREEN -->
+  <div class="screen hidden" id="screen-account">
+    <div class="card">
+      <h3>Account</h3>
+      <p class="sub">Manage your PipPulse Gold access.</p>
+
+      <div id="loggedOutAccount">
+        <button class="btn primary" onclick="openAuth('signup')">Create Account</button>
+        <button class="btn ghost" style="margin-top:10px" onclick="openAuth('login')">Login</button>
+      </div>
+
+      <div id="loggedInAccount" class="hidden">
+        <div class="signal">
+          <div class="pair" id="accountName">Subscriber</div>
+          <div class="time" id="accountEmail"></div>
+          <div class="time" id="accountPhone"></div>
+          <div class="time" id="accountCountry"></div>
+        </div>
+        <div class="badge trial" id="accountStatus" style="display:inline-block;margin-bottom:12px"></div>
+        <button class="btn primary" onclick="openPlans()">Upgrade Access</button>
+        <button class="btn ghost" style="margin-top:10px" onclick="logoutSubscriber()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="adminCard">
+      <h3>Admin Tools</h3>
+      <p class="sub">Administrator-only controls.</p>
+      <button class="btn primary" onclick="openEditor()">Post New Signal</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="openSettings()">Payment & App Settings</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="openPayments()">Payment Activations</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-signals" onclick="showScreen('signals')"><span>📈</span>Signals</button>
+    <button class="nav-btn" id="nav-plans" onclick="showScreen('plans')"><span>👑</span>Plans</button>
+    <button class="nav-btn" id="nav-account" onclick="showScreen('account')"><span>👤</span>Account</button>
+  </nav>
+</div>
+
+<!-- AUTH SHEET -->
+<div class="sheet" id="authSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3 id="authTitle">Create Account</h3>
+    <p class="sub" id="authSubtitle">Sign up to start your 3 free XAUUSD signals.</p>
+
+    <div id="signupFields">
+      <label>Full name</label>
+      <input id="authName" placeholder="Enter your full name" />
+
+      <label>Country of origin</label>
+      <select id="authCountry" onchange="updateCurrencyMode()">
+        <option value="">Select your country</option>
+        <option value="Ghana">Ghana</option>
+        <option value="Nigeria">Nigeria</option>
+        <option value="Kenya">Kenya</option>
+        <option value="South Africa">South Africa</option>
+        <option value="United Kingdom">United Kingdom</option>
+        <option value="United States">United States</option>
+        <option value="Canada">Canada</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <label>Phone number</label>
+      <input id="authPhone" type="tel" inputmode="tel" placeholder="e.g. 0244000000" />
+    </div>
+
+    <label>Email address</label>
+    <input id="authEmail" type="email" inputmode="email" placeholder="you@email.com" />
+
+    <label>Password</label>
+    <input id="authPassword" type="password" placeholder="Create a password" />
+
+    <button class="btn primary" style="margin-top:16px" id="authSubmitBtn" onclick="submitAuth()">Create Account</button>
+
+    <p class="sub" style="margin-top:14px;text-align:center">
+      <span id="authSwitchText">Already have an account?</span>
+      <a href="#" id="authSwitchLink" onclick="toggleAuthMode();return false;" style="color:var(--gold)">Login</a>
+    </p>
+
+    <button class="btn ghost" onclick="closeSheet('authSheet')">Cancel</button>
+  </div>
+</div>
+
+<!-- PAYWALL SHEET -->
+<div class="sheet" id="paywallSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3>You’ve used your 3 free trades</h3>
+    <p class="sub">Choose a premium plan to continue receiving PipPulse Gold signals.</p>
+    <button class="btn primary" onclick="openPlans()">View Premium Plans</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="closeSheet('paywallSheet')">Maybe Later</button>
+  </div>
+</div>
+
+<!-- PAYMENT SHEET -->
+<div class="sheet" id="paymentSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3 id="paymentTitle">Payment</h3>
+    <p class="sub" id="paymentSubtitle"></p>
+    <div class="payment-box" id="paymentBody"></div>
+    <button class="btn ghost copy" onclick="copyPaymentDetails()">Copy Payment Details</button>
+    <button class="btn primary" style="margin-top:10px" onclick="submitPaymentProof()">I Have Made Payment</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="closeSheet('paymentSheet')">Close</button>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN SHEET -->
+<div class="sheet" id="adminSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3>Administrator Access</h3>
+    <p class="sub">Enter your admin passcode.</p>
+    <label>Admin passcode</label>
+    <input id="adminPass" type="password" />
+    <button class="btn primary" style="margin-top:16px" onclick="loginAdmin()">Login</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="closeSheet('adminSheet')">Cancel</button>
+    <p class="sub" style="margin-top:12px">Default passcode: <strong>pippulse2026</strong></p>
+  </div>
+</div>
+
+<!-- SIGNAL EDITOR SHEET -->
+<div class="sheet" id="editorSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3 id="editorTitle">Post New Signal</h3>
+    <p class="sub">Add as many take-profit levels as needed.</p>
+
+    <label>Direction</label>
+    <select id="fDirection"><option>BUY</option><option>SELL</option></select>
+
+    <label>Status</label>
+    <select id="fStatus">
+      <option value="PUBLISHED">Published</option>
+      <option value="DRAFT">Draft</option>
+      <option value="CLOSED">Closed</option>
+    </select>
+
+    <label>Confidence</label>
+    <input id="fConfidence" type="number" min="1" max="100" value="80" />
+
+    <label>Entry zone / price</label>
+    <input id="fEntry" placeholder="e.g. 2402.50 - 2404.00" />
+
+    <label>Stop loss</label>
+    <input id="fStop" placeholder="e.g. 2397.00" />
+
+    <label>Take Profit Levels</label>
+    <div id="tpFields"></div>
+    <button class="btn ghost small" onclick="addTpField()">+ Add Another TP</button>
+
+    <label>Signal chart / analysis image</label>
+    <input id="fImage" type="file" accept="image/*" />
+    <div class="upload-status" id="imageStatus">Images are compressed automatically.</div>
+    <img id="signalPreview" class="image-preview" style="display:none" />
+
+    <label>Market commentary</label>
+    <textarea id="fNotes"></textarea>
+
+    <button class="btn primary" style="margin-top:16px" onclick="saveSignal()">Save Signal</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="closeSheet('editorSheet')">Cancel</button>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3>Admin Settings</h3>
+    <p class="sub">Set your Mobile Money and USDT payment details.</p>
+
+    <label>MTN MoMo number</label><input id="momoMtn" />
+    <label>Telecel Cash number</label><input id="momoTelecel" />
+    <label>AirtelTigo Money number</label><input id="momoAirtelTigo" />
+    <label>Mobile Money account name</label><input id="momoName" />
+    <label>USDT TRC20 address</label><input id="usdtTrc20" />
+    <label>USDT BEP20 address</label><input id="usdtBep20" />
+
+    <label>Homepage headline</label><input id="sHeadline" />
+    <label>Homepage description</label><textarea id="sDescription"></textarea>
+
+    <label>Homepage banner image</label>
+    <input id="sHero" type="file" accept="image/*" />
+    <img id="heroPreview" class="image-preview" style="display:none" />
+
+    <label>Brand logo image</label>
+    <input id="sLogo" type="file" accept="image/*" />
+    <img id="logoPreview" class="image-preview" style="display:none" />
+
+    <button class="btn primary" style="margin-top:16px" onclick="saveSettings()">Save Settings</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="closeSheet('settingsSheet')">Cancel</button>
+  </div>
+</div>
+
+<!-- PAYMENTS SHEET -->
+<div class="sheet" id="paymentsSheet">
+  <div class="sheet-box">
+    <div class="sheet-handle"></div>
+    <h3>Payment Activations</h3>
+    <p class="sub">Review and activate subscriber payments.</p>
+    <div id="paymentsList"></div>
+    <button class="btn ghost" style="margin-top:14px" onclick="closeSheet('paymentsSheet')">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_PASSCODE="pippulse2026";
+const FREE_TRADE_LIMIT=3;
+
+const PLANS={
+  monthly:{label:"1 Month",ghc:50,usd:10,days:30},
+  "five-month":{label:"5 Months",ghc:160,usd:30,days:150},
+  lifetime:{label:"Lifetime Access",ghc:850,usd:150,days:null}
+};
+
+let isAdmin=false,editingId=null,authMode="signup";
+let selectedPlan=null,selectedCurrency="GHS";
+let pendingSignalImage="",pendingHeroImage="",pendingLogoImage="";
+
+let signals=JSON.parse(localStorage.getItem("pippulse_signals")||"[]");
+let users=JSON.parse(localStorage.getItem("pippulse_users")||"[]");
+let payments=JSON.parse(localStorage.getItem("pippulse_payments")||"[]");
+let currentUser=JSON.parse(localStorage.getItem("pippulse_current_user")||"null");
+
+let settings=JSON.parse(localStorage.getItem("pippulse_settings")||JSON.stringify({
+  momoMtn:"",momoTelecel:"",momoAirtelTigo:"",momoName:"",
+  usdtTrc20:"",usdtBep20:"",
+  headline:"Professional XAUUSD signals.",
+  description:"Try your first 3 signals free. Upgrade for full access to every trade plan."
+}));
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now=()=>new Date().toLocaleString();
+
+function saveSignals(){
+  try{localStorage.setItem("pippulse_signals",JSON.stringify(signals));return true}
+  catch(e){toast("Storage is full. Remove an old image or signal.");return false}
+}
+function saveUsers(){
+  try{localStorage.setItem("pippulse_users",JSON.stringify(users));return true}
+  catch(e){toast("Unable to save account data.");return false}
+}
+function savePayments(){
+  try{localStorage.setItem("pippulse_payments",JSON.stringify(payments));return true}
+  catch(e){toast("Unable to save payment submission.");return false}
+}
+function saveCurrentUser(){localStorage.setItem("pippulse_current_user",JSON.stringify(currentUser))}
+function saveSettingsData(){
+  try{localStorage.setItem("pippulse_settings",JSON.stringify(settings));return true}
+  catch(e){toast("Image is too large even after compression.");return false}
+}
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000)}
+function openSheet(id){closeAllSheets();$(id).classList.add("show")}
+function closeSheet(id){$(id).classList.remove("show")}
+function closeAllSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("show"))}
+
+function compressImage(file,maxWidth=1400,quality=.72){
+  return new Promise((resolve,reject)=>{
+    if(!file||!file.type.startsWith("image/"))return reject(new Error("Choose a valid image."));
+    const r=new FileReader();
+    r.onerror=()=>reject(new Error("Could not read image."));
+    r.onload=e=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error("Unsupported image."));
+      img.onload=()=>{
+        const scale=Math.min(1,maxWidth/img.width);
+        const c=document.createElement("canvas");
+        c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL("image/jpeg",quality));
+      };
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+/* ================= NAVIGATION ================= */
+function showScreen(name){
+  ["signals","plans","account"].forEach(s=>{
+    $(`screen-${s}`).classList.toggle("hidden",s!==name);
+    $(`nav-${s}`).classList.toggle("active",s===name);
+  });
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ================= AUTH ================= */
+function openAuth(mode){
+  closeAllSheets();
+  authMode=mode;
+  updateAuthSheet();
+  openSheet("authSheet");
+}
+
+function toggleAuthMode(){
+  authMode=authMode==="signup"?"login":"signup";
+  updateAuthSheet();
+}
+
+function updateAuthSheet(){
+  const signup=authMode==="signup";
+  $("authTitle").textContent=signup?"Create Account":"Login";
+  $("authSubtitle").textContent=signup
+    ?"Sign up to start your 3 free XAUUSD signals."
+    :"Login to access your PipPulse Gold signal feed.";
+  $("signupFields").style.display=signup?"block":"none";
+  $("authSubmitBtn").textContent=signup?"Create Account":"Login";
+  $("authSwitchText").textContent=signup?"Already have an account?":"New to PipPulse Gold?";
+  $("authSwitchLink").textContent=signup?"Login":"Create an account";
+}
+
+function updateCurrencyMode(){
+  selectedCurrency=$("authCountry").value==="Ghana"?"GHS":"USD";
+}
+
+function submitAuth(){
+  const name=$("authName").value.trim();
+  const country=$("authCountry").value;
+  const phone=$("authPhone").value.trim();
+  const email=$("authEmail").value.trim().toLowerCase();
+  const password=$("authPassword").value;
+
+  if(!email||!password){toast("Enter your email and password.");return}
+
+  if(authMode==="signup"){
+    if(!name){toast("Enter your full name.");return}
+    if(!country){toast("Select your country of origin.");return}
+    if(!phone){toast("Enter your phone number.");return}
+    if(phone.length<9){toast("Enter a valid phone number.");return}
+    if(password.length<6){toast("Password must be at least 6 characters.");return}
+    if(users.some(u=>u.email===email)){toast("This email already has an account.");return}
+
+    currentUser={
+      id:Date.now(),name,country,phone,email,password,
+      freeUsed:0,subscribed:false,plan:null,planExpires:null,
+      joinedAt:new Date().toISOString()
+    };
+
+    users.push(currentUser);
+    if(!saveUsers())return;
+    saveCurrentUser();
+    closeSheet("authSheet");
+    updateAccountUI();render();
+    toast(`Welcome, ${name}. Your 3 free trades are active.`);
+  }
+
+  if(authMode==="login"){
+    const user=users.find(u=>u.email===email&&u.password===password);
+    if(!user){toast("Incorrect email or password.");return}
+    currentUser=user;
+    saveCurrentUser();
+    closeSheet("authSheet");
+    updateAccountUI();render();
+    toast(`Welcome back, ${user.name}.`);
+  }
+}
+
+function logoutSubscriber(){
+  currentUser=null;
+  localStorage.removeItem("pippulse_current_user");
+  updateAccountUI();render();
+  toast("You have been logged out.");
+}
+
+function updateAccountUI(){
+  const loggedIn=!!currentUser;
+  $("loggedOutAccount").classList.toggle("hidden",loggedIn);
+  $("loggedInAccount").classList.toggle("hidden",!loggedIn);
+
+  if(loggedIn){
+    $("accountName").textContent=currentUser.name;
+    $("accountEmail").textContent=currentUser.email;
+    $("accountPhone").textContent=currentUser.phone;
+    $("accountCountry").textContent=currentUser.country;
+    $("accountStatus").textContent=subscriptionActive()
+      ?`Premium: ${PLANS[currentUser.plan]?.label||"Active"}`
+      :freeSignalsLeft()>0?`Free Trial: ${freeSignalsLeft()} Left`:"Free Trial Ended";
+  }
+}
+
+/* ================= ACCESS ================= */
+function subscriptionActive(){
+  if(!currentUser)return false;
+  if(currentUser.plan==="lifetime")return currentUser.subscribed===true;
+  return currentUser.subscribed&&currentUser.planExpires&&new Date(currentUser.planExpires)>new Date();
+}
+
+function freeSignalsLeft(){
+  if(!currentUser)return 0;
+  if(subscriptionActive())return Infinity;
+  return Math.max(0,FREE_TRADE_LIMIT-(currentUser.freeUsed||0));
+}
+
+function updateAccessBadge(){
+  const b=$("accessBadge");
+  if(isAdmin){b.textContent="Admin Mode";b.className="badge admin";return}
+  if(!currentUser){b.textContent="Free: 3 Trades";b.className="badge trial";return}
+  if(subscriptionActive()){
+    b.textContent=`Premium: ${PLANS[currentUser.plan]?.label||"Active"}`;
+    b.className="badge trial";return;
+  }
+  const left=freeSignalsLeft();
+  b.textContent=left>0?`Free: ${left} Left`:"Trial Ended";
+  b.className=left>0?"badge trial":"badge locked";
+}
+
+/* ================= PAYMENTS ================= */
+function openPlans(){
+  closeAllSheets();
+  if(!currentUser){openAuth("signup");return}
+  showScreen("plans");
+}
+
+function choosePlan(plan){
+  if(!currentUser){openAuth("signup");return}
+  selectedPlan=plan;
+  selectedCurrency=currentUser.country==="Ghana"?"GHS":"USD";
+  showPaymentInstructions();
+  openSheet("paymentSheet");
+}
+
+function paymentDetails(){
+  const p=PLANS[selectedPlan];
+  if(!p)return null;
+
+  if(selectedCurrency==="GHS"){
+    return{
+      title:`Ghana Mobile Money — ${p.label}`,
+      subtitle:`Amount: GH₵${p.ghc}`,
+      body:`
+        <strong>Account name:</strong> ${esc(settings.momoName||"[Add account name in Admin Settings]")}<br><br>
+        <strong>MTN MoMo:</strong> ${esc(settings.momoMtn||"[Add MTN MoMo number]")}<br>
+        <strong>Telecel Cash:</strong> ${esc(settings.momoTelecel||"[Add Telecel Cash number]")}<br>
+        <strong>AirtelTigo Money:</strong> ${esc(settings.momoAirtelTigo||"[Add AirtelTigo number]")}<br><br>
+        After payment, enter your Mobile Money transaction ID below for confirmation.
+      `,
+      copy:`PipPulse Gold Payment\nPlan: ${p.label}\nAmount: GH₵${p.ghc}\nName: ${settings.momoName}\nMTN: ${settings.momoMtn}\nTelecel: ${settings.momoTelecel}\nAirtelTigo: ${settings.momoAirtelTigo}`
+    };
+  }
+
+  return{
+    title:`USDT Payment — ${p.label}`,
+    subtitle:`Amount: $${p.usd} USDT`,
+    body:`
+      <strong>TRC20 Address:</strong><br>${esc(settings.usdtTrc20||"[Add TRC20 address in Admin Settings]")}<br><br>
+      <strong>BEP20 Address:</strong><br>${esc(settings.usdtBep20||"[Add BEP20 address in Admin Settings]")}<br><br>
+      Send the exact USDT amount, then enter your transaction hash below for confirmation.
+    `,
+    copy:`PipPulse Gold USDT Payment\nPlan: ${p.label}\nAmount: ${p.usd} USDT\nTRC20: ${settings.usdtTrc20}\nBEP20: ${settings.usdtBep20}`
+  };
+}
+
+function showPaymentInstructions(){
+  const d=paymentDetails();
+  if(!d)return;
+  $("paymentTitle").textContent=d.title;
+  $("paymentSubtitle").textContent=d.subtitle;
+  $("paymentBody").innerHTML=d.body;
+}
+
+function copyPaymentDetails(){
+  const d=paymentDetails();
+  if(!d)return;
+  navigator.clipboard.writeText(d.copy);
+  toast("Payment details copied.");
+}
+
+function submitPaymentProof(){
+  if(!currentUser){openAuth("login");return}
+  if(!selectedPlan){toast("Select a premium plan first.");return}
+
+  const reference=prompt("Enter your Mobile Money transaction ID or USDT transaction hash:");
+  if(!reference){toast("Payment reference is required.");return}
+
+  payments.unshift({
+    id:Date.now(),userId:currentUser.id,userName:currentUser.name,
+    userEmail:currentUser.email,userPhone:currentUser.phone,country:currentUser.country,
+    plan:selectedPlan,currency:selectedCurrency,reference,status:"PENDING",submittedAt:now()
+  });
+
+  if(!savePayments())return;
+  closeSheet("paymentSheet");
+  toast("Payment submitted. Access will be activated after confirmation.");
+}
+
+function activatePayment(id){
+  if(!isAdmin)return;
+  const p=payments.find(x=>x.id===id);if(!p)return;
+  const user=users.find(u=>u.id===p.userId);if(!user){toast("Subscriber not found.");return}
+
+  const plan=PLANS[p.plan];
+  user.subscribed=true;user.plan=p.plan;
+  user.planExpires=plan.days?new Date(Date.now()+plan.days*24*60*60*1000).toISOString():null;
+
+  users=users.map(u=>u.id===user.id?user:u);
+  p.status="ACTIVATED";
+
+  saveUsers();savePayments();renderPayments();render();
+  toast(`${user.name}'s ${plan.label} access activated.`);
+}
+
+function rejectPayment(id){
+  if(!isAdmin)return;
+  const p=payments.find(x=>x.id===id);if(!p)return;
+  p.status="REJECTED";savePayments();renderPayments();
+  toast("Payment marked as rejected.");
+}
+
+function renderPayments(){
+  const list=$("paymentsList");
+  if(!payments.length){list.innerHTML=`<div class="empty">No payment submissions yet.</div>`;return}
+
+  list.innerHTML=payments.map(p=>`
+    <div class="signal">
+      <div class="signal-head">
+        <div>
+          <div class="pair">${esc(p.userName)}</div>
+          <div class="time">${esc(p.userEmail)} · ${esc(p.userPhone)}</div>
+        </div>
+        <div class="tag ${p.status==="ACTIVATED"?"buy":p.status==="REJECTED"?"sell":"pending"}">${p.status}</div>
+      </div>
+      <div class="notes">
+        <strong>Plan:</strong> ${PLANS[p.plan]?.label||p.plan}<br>
+        <strong>Currency:</strong> ${p.currency}<br>
+        <strong>Reference:</strong> ${esc(p.reference)}<br>
+        <strong>Submitted:</strong> ${esc(p.submittedAt)}
+      </div>
+      ${p.status==="PENDING"?`
+        <div class="actions">
+          <button class="btn small primary" onclick="activatePayment(${p.id})">Activate</button>
+          <button class="btn small danger" onclick="rejectPayment(${p.id})">Reject</button>
+        </div>`:""}
+    </div>`).join("");
+}
+
+/* ================= ADMIN ================= */
+function openAdmin(){closeAllSheets();openSheet("adminSheet")}
+
+function loginAdmin(){
+  if($("adminPass").value===ADMIN_PASSCODE){
+    isAdmin=true;
+    updateAccessBadge();
+    $("adminCard").classList.remove("hidden");
+    closeSheet("adminSheet");
+    $("adminPass").value="";
+    toast("Administrator access granted.");
+    showScreen("account");render();
+  } else toast("Incorrect admin passcode.");
+}
+
+function checkAdminAccess(){
+  if(window.location.hash==="#admin")openAdmin();
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.shiftKey&&e.altKey&&e.key.toLowerCase()==="a")openAdmin();
+});
+
+/* ================= SIGNALS ================= */
+function openEditor(){
+  if(!isAdmin){openAdmin();return}
+  editingId=null;pendingSignalImage="";
+  $("editorTitle").textContent="Post New Signal";
+  $("fDirection").value="BUY";$("fStatus").value="PUBLISHED";$("fConfidence").value="80";
+  $("fEntry").value="";$("fStop").value="";$("fNotes").value="";
+  $("fImage").value="";$("signalPreview").style.display="none";$("signalPreview").src="";
+  $("tpFields").innerHTML="";
+  addTpField();addTpField();addTpField();
+  openSheet("editorSheet");
+}
+
+function addTpField(value=""){
+  const div=document.createElement("div");
+  div.className="tp-row";
+  const n=$("tpFields").children.length+1;
+  div.innerHTML=`<input class="tpInput" placeholder="TP${n} — e.g. 2410.00" value="${esc(value)}" /><button class="btn danger small" onclick="this.parentElement.remove()">Remove</button>`;
+  $("tpFields").appendChild(div);
+}
+
+$("fImage").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  $("imageStatus").textContent="Processing image...";
+  try{
+    pendingSignalImage=await compressImage(file,1400,.72);
+    $("signalPreview").src=pendingSignalImage;
+    $("signalPreview").style.display="block";
+    $("imageStatus").textContent="Image ready.";
+    toast("Chart image uploaded.");
+  }catch(err){
+    pendingSignalImage="";$("signalPreview").style.display="none";
+    $("imageStatus").textContent=err.message;toast(err.message);
+  }
+});
+
+$("sHero").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{pendingHeroImage=await compressImage(file,1800,.7);
+    $("heroPreview").src=pendingHeroImage;$("heroPreview").style.display="block";
+  }catch(err){toast(err.message)}
+});
+
+$("sLogo").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{pendingLogoImage=await compressImage(file,300,.85);
+    $("logoPreview").src=pendingLogoImage;$("logoPreview").style.display="block";
+  }catch(err){toast(err.message)}
+});
+
+function saveSignal(){
+  const direction=$("fDirection").value,status=$("fStatus").value;
+  const entry=$("fEntry").value.trim(),stop=$("fStop").value.trim();
+  const tps=[...document.querySelectorAll(".tpInput")].map(i=>i.value.trim()).filter(Boolean);
+  const notes=$("fNotes").value.trim(),confidence=+$("fConfidence").value||75;
+
+  if(!entry||!stop||!tps.length){toast("Entry, stop loss, and at least one TP are required.");return}
+
+  if(editingId){
+    const s=signals.find(x=>x.id===editingId);
+    Object.assign(s,{direction,status,entry,stop,tps,notes,confidence,image:pendingSignalImage||s.image||"",updatedAt:now()});
+    if(!saveSignals())return;
+    toast("Signal updated.");
+  } else {
+    signals.unshift({id:Date.now(),direction,status,entry,stop,tps,notes,confidence,image:pendingSignalImage,createdAt:now(),updatedAt:now()});
+    if(!saveSignals()){signals.shift();return}
+    toast(status==="PUBLISHED"?"Signal published.":"Signal saved as draft.");
+  }
+  closeSheet("editorSheet");render();
+}
+
+function editSignal(id){
+  if(!isAdmin)return;
+  const s=signals.find(x=>x.id===id);if(!s)return;
+  editingId=id;pendingSignalImage=s.image||"";
+  $("editorTitle").textContent="Edit Signal";
+  $("fDirection").value=s.direction;$("fStatus").value=s.status;$("fConfidence").value=s.confidence;
+  $("fEntry").value=s.entry;$("fStop").value=s.stop;$("fNotes").value=s.notes||"";
+  $("fImage").value="";
+  $("signalPreview").style.display=pendingSignalImage?"block":"none";
+  $("signalPreview").src=pendingSignalImage;
+  $("tpFields").innerHTML="";
+  (s.tps&&s.tps.length?s.tps:[""]).forEach(v=>addTpField(v));
+  openSheet("editorSheet");
+}
+
+function deleteSignal(id){
+  if(!isAdmin)return;
+  if(!confirm("Delete this signal?"))return;
+  signals=signals.filter(s=>s.id!==id);
+  saveSignals();render();toast("Signal deleted.");
+}
+
+function setStatus(id,status){
+  if(!isAdmin)return;
+  const s=signals.find(x=>x.id===id);if(!s)return;
+  s.status=status;s.updatedAt=now();
+  if(saveSignals())render();
+  toast(status==="PUBLISHED"?"Signal published.":status==="CLOSED"?"Signal closed.":"Signal moved to draft.");
+}
+
+function signalText(s){
+  return `PipPulse Gold | XAUUSD ${s.direction}\nStatus: ${s.status}\nEntry: ${s.entry}\nStop Loss: ${s.stop}\n${s.tps.map((t,i)=>`TP${i+1}: ${t}`).join("\n")}\nConfidence: ${s.confidence}%\n\n${s.notes||""}\n\nPublished: ${s.createdAt}`;
+}
+
+function copySignal(id){
+  if(!currentUser){openAuth("login");return}
+  if(!subscriptionActive()&&freeSignalsLeft()<=0){openSheet("paywallSheet");return}
+  const s=signals.find(x=>x.id===id);if(!s)return;
+  navigator.clipboard.writeText(signalText(s));
+  toast("Signal copied.");
+}
+
+/* ================= SETTINGS ================= */
+function openSettings(){
+  if(!isAdmin){openAdmin();return}
+  $("momoMtn").value=settings.momoMtn;
+  $("momoTelecel").value=settings.momoTelecel;
+  $("momoAirtelTigo").value=settings.momoAirtelTigo;
+  $("momoName").value=settings.momoName;
+  $("usdtTrc20").value=settings.usdtTrc20;
+  $("usdtBep20").value=settings.usdtBep20;
+  $("sHeadline").value=settings.headline;
+  $("sDescription").value=settings.description;
+  pendingHeroImage=settings.heroImage||"";
+  pendingLogoImage=settings.logoImage||"";
+  $("heroPreview").style.display=pendingHeroImage?"block":"none";$("heroPreview").src=pendingHeroImage;
+  $("logoPreview").style.display=pendingLogoImage?"block":"none";$("logoPreview").src=pendingLogoImage;
+  openSheet("settingsSheet");
+}
+
+function saveSettings(){
+  settings.momoMtn=$("momoMtn").value.trim();
+  settings.momoTelecel=$("momoTelecel").value.trim();
+  settings.momoAirtelTigo=$("momoAirtelTigo").value.trim();
+  settings.momoName=$("momoName").value.trim();
+  settings.usdtTrc20=$("usdtTrc20").value.trim();
+  settings.usdtBep20=$("usdtBep20").value.trim();
+  settings.headline=$("sHeadline").value||settings.headline;
+  settings.description=$("sDescription").value||settings.description;
+  if(pendingHeroImage)settings.heroImage=pendingHeroImage;
+  if(pendingLogoImage)settings.logoImage=pendingLogoImage;
+  if(!saveSettingsData())return;
+  applySettings();closeSheet("settingsSheet");toast("Settings saved.");
+}
+
+function applySettings(){
+  $("heroHeadline").textContent=settings.headline;
+  $("heroDescription").textContent=settings.description;
+  if(settings.heroImage)$("heroCard").style.backgroundImage=`url(${settings.heroImage})`;
+  if(settings.logoImage)$("brandLogo").innerHTML=`<img src="${settings.logoImage}" alt="PipPulse Gold logo">`;
+}
+
+/* ================= RENDER ================= */
+function render(){
+  const published=signals.filter(s=>s.status==="PUBLISHED");
+  const canViewAll=isAdmin||subscriptionActive();
+  const freeLeft=freeSignalsLeft();
+
+  const visible=canViewAll?published:published.slice(0,freeLeft);
+  const locked=canViewAll?[]:published.slice(freeLeft);
+
+  const feed=$("signalFeed");
+
+  if(!published.length){
+    feed.innerHTML=`<div class="empty">${isAdmin?"No signals yet. Post your first XAUUSD signal.":"No published signals yet."}</div>`;
+  } else {
+    const renderSignal=s=>`
+      <div class="signal">
+        <div class="signal-head">
+          <div>
+            <div class="pair">XAUUSD · ${s.direction}</div>
+            <div class="time">Published ${esc(s.createdAt)}</div>
+          </div>
+          <div class="tag ${s.status==="PUBLISHED"?(s.direction==="BUY"?"buy":"sell"):s.status==="CLOSED"?"closed":"pending"}">${s.status}</div>
+        </div>
+        ${s.image?`<img class="signal-img" src="${s.image}" alt="XAUUSD analysis">`:""}
+        <div class="levels">
+          <div class="level"><span>Entry</span><b>${esc(s.entry)}</b></div>
+          <div class="level"><span>Stop Loss</span><b>${esc(s.stop)}</b></div>
+          ${s.tps.map((t,i)=>`<div class="level"><span>TP${i+1}</span><b>${esc(t)}</b></div>`).join("")}
+        </div>
+        <div class="notes">${esc(s.notes)||"No additional commentary."}</div>
+        <div class="actions">
+          <div class="badge">Confidence ${s.confidence}%</div>
+          ${isAdmin?`
+            <button class="btn small ghost" onclick="editSignal(${s.id})">Edit</button>
+            ${s.status!=="PUBLISHED"?`<button class="btn small primary" onclick="setStatus(${s.id},'PUBLISHED')">Publish</button>`:""}
+            ${s.status!=="CLOSED"?`<button class="btn small ghost" onclick="setStatus(${s.id},'CLOSED')">Close</button>`:""}
+            <button class="btn small danger" onclick="deleteSignal(${s.id})">Delete</button>
+          `:`<button class="btn small ghost" onclick="copySignal(${s.id})">Copy</button>`}
+        </div>
+      </div>`;
+
+    feed.innerHTML=visible.map(renderSignal).join("")+
+      (locked.length?`
+        <div class="signal locked">${renderSignal(locked[0])}</div>
+        <div class="empty">
+          <strong>${locked.length} more signal${locked.length===1?"":"s"} locked</strong><br><br>
+          You have completed your 3 free trades.<br><br>
+          <button class="btn primary" onclick="openPlans()">Unlock Full Access</button>
+        </div>`:"");
+  }
+
+  updateAccessBadge();
+}
+
+/* ================= INITIALIZE ================= */
+applySettings();
+updateAccountUI();
+checkAdminAccess();
+render();
+</script>
+</body>
+</html>
