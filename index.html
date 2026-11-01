@@ -234,6 +234,7 @@ input:focus,select:focus{border-color:var(--gold);outline:0;box-shadow:0 0 0 3px
   <p class="mut" style="margin:0" id="a-sub">Sign up to unlock your first 3 signals free.</p>
   <div id="a-fields">
     <label for="a-name">Full name</label><input id="a-name" autocomplete="name" placeholder="Your full name">
+    <label for="a-username">Username</label><input id="a-username" autocomplete="username" placeholder="Your username">
     <label for="a-country">Country</label>
     <select id="a-country" onchange="cc()"><option value="">Select your country</option><option>Ghana</option><option>Nigeria</option><option>Kenya</option><option>South Africa</option><option>United Kingdom</option><option>United States</option><option>Canada</option><option>Other</option></select>
     <label for="a-phone" id="a-ph">Phone number</label><input id="a-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Select your country first">
@@ -347,7 +348,7 @@ async function refresh(manual){
     const{data:{session}}=await sb.auth.getSession();
     S.user=session?session.user:null;S.error=null;
     if(S.user){
-      const[a,p]=await Promise.all([sb.rpc('get_my_access'),sb.from('profiles').select('display_name,email,phone,country').eq('id',S.user.id).maybeSingle()]);
+      const[a,p]=await Promise.all([sb.rpc('get_my_access'),sb.from('profiles').select('display_name,username,email,phone,country').eq('id',S.user.id).maybeSingle()]);
       S.access=a.data;S.profile=p.data;
       if(a.error)S.error=friendly(a.error);
       await loadSignals();
@@ -465,13 +466,18 @@ function renderAccount(){
   const p=S.profile||{},a=S.access||{};
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
-  const nm=p.display_name||'Member',lim=a.free_limit||3,left=freeLeft();
+  const nm=p.display_name||'Member',un=p.username||'-',lim=a.free_limit||3,left=freeLeft();
   const dots=Array.from({length:lim},(_,i)=>`<i class="${i<left?'':'u'}" style="--d:${i}"></i>`).join('');
   const sms=SMS_ALERTS&&p.country==='Ghana'&&p.phone;
   el.innerHTML=`<div class="card prof"><div class="avatar">${esc(nm[0].toUpperCase())}</div><div style="min-width:0"><h3>${esc(nm)}</h3><p class="mut" style="margin:0;overflow-wrap:anywhere">${esc(S.user.email)}</p></div></div>
     <div class="tiles"><div class="tile"><small>Plan</small><b>${esc(plan)}</b></div><div class="tile"><small>Expires</small><b>${esc(exp)}</b></div></div>
     <div class="card"><div class="uh"><span>Free unlocks</span><b>${hasFull()?'Unlimited':left+' of '+lim+' left'}</b></div>${hasFull()?'':`<div class="dots">${dots}</div>`}</div>
-    <div class="card rows"><div class="row"><span>Phone</span><b>${esc(p.phone||'-')}</b></div><div class="row"><span>Country</span><b>${esc(p.country||'-')}</b></div>${sms?'<div class="row"><span>SMS alerts</span><b>On</b></div>':''}</div>
+    <div class="card rows">
+      <div class="row"><span>Username</span><b>@${esc(un)}</b></div>
+      <div class="row"><span>Phone number</span><b>${esc(p.phone||'-')}</b></div>
+      <div class="row"><span>Country</span><b>${esc(p.country||'-')}</b></div>
+      ${sms?'<div class="row"><span>SMS alerts</span><b>On</b></div>':''}
+    </div>
     <button class="btn" onclick="logout()">Log out</button>`;
 }
 function render(){renderBadge();renderFeed();renderPlans();renderAccount()}
@@ -497,7 +503,7 @@ function copySig(id){
   navigator.clipboard.writeText(t).then(()=>toast('Signal copied.'),()=>toast('Copy is not available on this device.'));
 }
 function setErr(m){const e=$('a-err');e.textContent=m||'';e.hidden=!m}
-function cc(){const g=$('a-country').value==='Ghana';$('a-phone').placeholder=g?'024 000 0000':'+44 7700 900000';$('a-ph').textContent=g?'Ghana mobile number':'Phone number (with country code)';$('a-sms').hidden=!(SMS_ALERTS&&g)}
+function cc(){const g=$('a-country').value==='Ghana';$('a-phone').placeholder=g?'024 000 0000':'+233 25 000 0000.';$('a-ph').textContent=g?'Ghana mobile number':'Phone number (with country code)';$('a-sms').hidden=!(SMS_ALERTS&&g)}
 function openAuth(m){S.mode=m;authUI();openSheet('auth')}
 function authUI(){
   const su=S.mode==='signup';setErr('');cc();
@@ -515,13 +521,14 @@ async function submitAuth(){
   const btn=$('a-go');btn.disabled=true;
   try{
     if(S.mode==='signup'){
-      const name=$('a-name').value.trim(),country=$('a-country').value;
+      const name=$('a-name').value.trim(),username=$('a-username').value.trim(),country=$('a-country').value;
       if(!name)throw new Error('Enter your full name.');
+      if(!username)throw new Error('Enter a username.');
       if(!country)throw new Error('Select your country.');
       const phone=normPhone($('a-phone').value,country);
-      if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, for example 024 000 0000.':'Enter a valid phone number with country code, for example +44 7700 900000.');
+      if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, for example 024 000 0000.':'Enter a valid phone number with country code, for example +233 25 000 0000.');
       if(pw.length<8)throw new Error('Use a password of at least 8 characters.');
-      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name,phone,country},emailRedirectTo:location.origin}});
+      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name,username,phone,country},emailRedirectTo:location.origin}});
       if(error)throw error;
       if(data.user&&data.user.identities&&!data.user.identities.length)throw new Error('This email is already registered. Log in instead.');
       closeSheet('auth');
