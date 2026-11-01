@@ -302,10 +302,10 @@ input:focus,select:focus{border-color:var(--gold);outline:0;box-shadow:0 0 0 3px
   
   <div id="a-fields">
     <label for="a-name">Full Name</label>
-    <input id="a-name" autocomplete="name" placeholder="Kwame Mensah">
+    <input id="a-name" autocomplete="name" placeholder="Immergensy Junior">
     
     <label for="a-username">Username</label>
-    <input id="a-username" autocomplete="username" placeholder="kwame_goldtrader">
+    <input id="a-username" autocomplete="username" placeholder="immergensy_junior">
     
     <label for="a-country">Country</label>
     <select id="a-country" onchange="cc()">
@@ -560,19 +560,25 @@ function buy(){
 function renderAccount(){
   const el=$('v-account');
   if(!S.user){el.innerHTML='<div class="card"><h3>Your account</h3><p class="mut" style="margin:0">Create a free account to unlock your first 3 signals.</p><button class="btn gold" onclick="openAuth(\'signup\')">Create free account</button><button class="btn" onclick="openAuth(\'login\')">Log in</button></div>';return}
-  const p=S.profile||{},a=S.access||{};
+  const p=S.profile||{}, m=(S.user&&S.user.user_metadata)||{}, a=S.access||{};
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
-  const nm=p.display_name||'Member',un=p.username||'-',lim=a.free_limit||3,left=freeLeft();
+  
+  const nm=p.display_name||m.full_name||'Immergensy Junior';
+  const un=p.username||m.username||'-';
+  const ph=p.phone||m.phone||'-';
+  const ct=p.country||m.country||'-';
+  const lim=a.free_limit||3,left=freeLeft();
+  
   const dots=Array.from({length:lim},(_,i)=>`<i class="${i<left?'':'u'}" style="--d:${i}"></i>`).join('');
-  const sms=SMS_ALERTS&&p.country==='Ghana'&&p.phone;
+  const sms=SMS_ALERTS&&ct==='Ghana'&&ph!=='-';
   el.innerHTML=`<div class="card prof"><div class="avatar">${esc(nm[0].toUpperCase())}</div><div style="min-width:0"><h3>${esc(nm)}</h3><p class="mut" style="margin:0;overflow-wrap:anywhere">${esc(S.user.email)}</p></div></div>
     <div class="tiles"><div class="tile"><small>Plan</small><b>${esc(plan)}</b></div><div class="tile"><small>Expires</small><b>${esc(exp)}</b></div></div>
     <div class="card"><div class="uh"><span>Free unlocks</span><b>${hasFull()?'Unlimited':left+' of '+lim+' left'}</b></div>${hasFull()?'':`<div class="dots">${dots}</div>`}</div>
     <div class="card rows">
-      <div class="row"><span>Username</span><b>@${esc(un)}</b></div>
-      <div class="row"><span>Phone Number</span><b>${esc(p.phone||'-')}</b></div>
-      <div class="row"><span>Country</span><b>${esc(p.country||'-')}</b></div>
+      <div class="row"><span>Username</span><b>${un!=='-'?'@':''}${esc(un)}</b></div>
+      <div class="row"><span>Phone Number</span><b>${esc(ph)}</b></div>
+      <div class="row"><span>Country</span><b>${esc(ct)}</b></div>
       ${sms?'<div class="row"><span>SMS Alerts</span><b>On</b></div>':''}
     </div>
     <button class="btn" onclick="logout()">Log out</button>`;
@@ -600,7 +606,7 @@ function copySig(id){
   navigator.clipboard.writeText(t).then(()=>toast('Signal copied.'),()=>toast('Copy is not available on this device.'));
 }
 function setErr(m){const e=$('a-err');e.textContent=m||'';e.hidden=!m}
-function cc(){const g=$('a-country').value==='Ghana';$('a-phone').placeholder=g?'024 000 0000':'+233 24 000 0000';$('a-ph').textContent=g?'Ghana mobile number':'Phone number (with country code)';$('a-sms').hidden=!(SMS_ALERTS&&g)}
+function cc(){const g=$('a-country').value==='Ghana';$('a-phone').placeholder=g?'+233 24 000 0000':'+233 24 000 0000';$('a-ph').textContent=g?'Ghana mobile number':'Phone number (with country code)';$('a-sms').hidden=!(SMS_ALERTS&&g)}
 function openAuth(m){S.mode=m;authUI();openSheet('auth')}
 function authUI(){
   const su=S.mode==='signup';setErr('');cc();
@@ -618,12 +624,12 @@ async function submitAuth(){
   const btn=$('a-go');btn.disabled=true;
   try{
     if(S.mode==='signup'){
-      const name=$('a-name').value.trim(),username=$('a-username').value.trim(),country=$('a-country').value;
+      const name=$('a-name').value.trim()||'Immergensy Junior',username=$('a-username').value.trim(),country=$('a-country').value;
       if(!name)throw new Error('Enter your full name.');
       if(!username)throw new Error('Enter a username.');
       if(!country)throw new Error('Select your country.');
       const phone=normPhone($('a-phone').value,country);
-      if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., 024 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
+      if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., +233 24 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
       if(pw.length<8)throw new Error('Password must be at least 8 characters long.');
       const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name,username,phone,country},emailRedirectTo:location.origin}});
       if(error)throw error;
