@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0B0F17">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://okuotuehtvsxtibjgjsi.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://okuotuehtvsxtibjgjsi.supabase.co; connect-src 'self' https://okuotuehtvsxtibjgjsi.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -336,6 +336,25 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
 #v-account>*{animation:rise .5s var(--ease) both}
 #v-account>:nth-child(2){animation-delay:.08s}#v-account>:nth-child(3){animation-delay:.16s}#v-account>:nth-child(4){animation-delay:.24s}#v-account>:nth-child(5){animation-delay:.32s}#v-account>:nth-child(6){animation-delay:.4s}
 @media (prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.pulse path{animation:none;stroke-dashoffset:0}}
+/* ===== v3: payments, admin, chart images, legal links ===== */
+textarea{width:100%;min-height:5.5rem;padding:.75rem .9rem;border-radius:.75rem;border:1px solid var(--line2);background:var(--bg);color:var(--tx);font:inherit;font-size:15px;resize:vertical}
+textarea:focus{border-color:var(--gold);outline:0;box-shadow:0 0 0 3px var(--gold-glow)}
+input[type=file]{padding:.55rem .7rem}
+.legal a{color:var(--tx2);text-decoration:underline}
+.chartimg{display:block;margin-top:.8rem}
+.chartimg img{display:block;width:100%;height:auto;border-radius:.75rem;border:1px solid var(--line)}
+.mini{width:auto;margin:0;padding:.35rem .7rem;font-size:.8rem;border-radius:.5rem;flex:none}
+.pst{display:inline-block;margin-top:.15rem;padding:.1rem .5rem;border-radius:.4rem;font-size:.72rem;font-weight:700}
+.pst.pending{color:#FDE68A;background:rgba(245,192,66,.12)}
+.pst.activated{color:var(--grn);background:var(--grn-bg)}
+.pst.rejected{color:#FCA5A5;background:var(--red-bg)}
+.pn{display:block;color:var(--tx2);font-size:.8rem;margin-top:.2rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.atabs{display:flex;gap:.4rem;overflow-x:auto;margin:.9rem 0}
+.atabs button{flex:none;padding:.5rem .9rem;border-radius:99px;border:1px solid var(--line2);background:var(--s1);color:var(--tx2);font:inherit;font-size:.85rem;font-weight:600;cursor:pointer}
+.atabs button.on{color:var(--ink);background:var(--gbtn);border:0}
+.row>div{min-width:0}
+.row div b{display:block}
 </style>
 </head>
 <body>
@@ -373,6 +392,7 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
 
     <section id="v-plans" hidden></section>
     <section id="v-account" hidden></section>
+    <section id='v-admin' hidden></section>
   </main>
 
   <nav><div>
@@ -433,6 +453,7 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
   <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
   
   <p class="err" id="a-err" role="alert" hidden></p>
+  <p class='hint' id='a-legal' hidden>By creating an account you agree to the <a href='legal.html#terms' target='_blank' rel='noopener'>Terms</a>, <a href='legal.html#privacy' target='_blank' rel='noopener'>Privacy Policy</a> and <a href='legal.html#risk' target='_blank' rel='noopener'>Risk Disclosure</a>.</p>
   
   <button class="btn gold" id="a-go" onclick="submitAuth()">Create account</button>
   <p class="mut" style="text-align:center;margin:.9rem 0 0;font-size:.88rem" id="a-sw"></p>
@@ -445,6 +466,7 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
   <h3>Check your email</h3>
   <p class="mut">We sent a confirmation link to your email address. Open it, then return here to log in and access your 3 free signals.</p>
   <button class="btn gold" onclick="closeSheet('confirm')">Got it</button>
+  <button class='btn' data-act='resend'>Resend the email</button>
 </div></div>
 
 <div class="sheet" id="s-paywall" role="dialog" aria-modal="true"><div class="box">
@@ -454,6 +476,18 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
   <p class="mut">Upgrade to PipPulse Gold Premium to keep unlocking every XAUUSD signal.</p>
   <button class="btn gold" onclick="closeSheet('paywall');show('plans')">View Premium Plans</button>
   <button class="btn" onclick="closeSheet('paywall')">Not now</button>
+</div></div>
+
+<div class='sheet' id='s-pay' role='dialog' aria-modal='true'><div class='box'><div class='grab'></div><div id='pay-body'></div></div></div>
+
+<div class='sheet' id='s-reset' role='dialog' aria-modal='true' aria-labelledby='r-title'><div class='box'>
+  <div class='grab'></div>
+  <h3 id='r-title'>Set a new password</h3>
+  <p class='mut' style='margin:0'>Choose a new password for your account.</p>
+  <label for='r-pw'>New password</label>
+  <input id='r-pw' type='password' autocomplete='new-password' maxlength='72' placeholder='At least 8 characters'>
+  <p class='err' id='r-err' role='alert' hidden></p>
+  <button class='btn gold' data-act='resetSave'>Save new password</button>
 </div></div>
 
 <div class="toast" id="toast" role="status"></div>
@@ -514,6 +548,7 @@ document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));syncLock()}});
 const VIEWS=['signals','plans','account'];
 function show(v){
+  $('v-admin').hidden=true;
   VIEWS.forEach((x,i)=>{const on=x===v;$('v-'+x).hidden=!on;$('n-'+x).classList.toggle('on',on);if(on){$('ind').style.setProperty('--ix',i);if(x!=='signals'){const el=$('v-'+x);el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}}});
   scrollTo({top:0});
 }
@@ -618,6 +653,8 @@ function freeLeft(){const a=S.access;return a?Math.max(0,a.free_limit-a.free_use
 function hasFull(){return !!S.access&&(S.access.is_admin||S.access.premium)}
 function renderBadge(){
   const b=$('badge'),a=S.access;let t='Sign in',c='';
+  /* Hide the badge while the session is loading, and when signed in but account info did not load: never show 'Sign in' to a logged-in user */
+  b.hidden=S.loading||(!!S.user&&!a);
   if(a){if(a.is_admin){t='Admin';c='admin'}else if(a.premium){t='Premium';c='ok'}else if(freeLeft()>0){t='Free: '+freeLeft()+' left';c='ok'}else{t='Free limit reached';c='bad'}}
   const changed=b.textContent!==t;b.textContent=t;b.className='pill '+c+(changed&&b.dataset.init?' pop':'');b.dataset.init=1;
 }
@@ -645,9 +682,10 @@ async function refresh(manual){
     if(S.user){
       const[a,p]=await Promise.all([sb.rpc('get_my_access'),sb.from('profiles').select('display_name,username,email,phone,country').eq('id',S.user.id).maybeSingle()]);
       S.access=a.data;S.profile=p.data;
+      if(!(a.data&&a.data.is_admin))await loadPayments();
       if(a.error)S.error=friendly(a.error);
       await loadSignals();
-    }else{S.access=null;S.profile=null;S.signals=[]}
+    }else{S.access=null;S.profile=null;S.signals=[];S.payments=[]}
   }catch(e){S.error=friendly(e)}
   S.loading=false;rf.classList.remove('spin');render();
   if(manual===true)toast(S.error?'Could not update signals.':'Signals updated.');
@@ -658,9 +696,11 @@ async function loadSignals(){
   const ids=feed.filter(x=>x.unlocked).map(x=>x.id);
   const det={};
   if(ids.length){
-    const{data,error:e2}=await sb.from('signals').select('id,direction,entry_low,entry_high,stop_loss,take_profits,confidence,notes').in('id',ids);
+    const{data,error:e2}=await sb.from('signals').select('id,direction,entry_low,entry_high,stop_loss,take_profits,confidence,notes,image_path').in('id',ids);
     if(e2)S.error=friendly(e2);
     (data||[]).forEach(d=>det[d.id]=d);
+    /* Chart images live in a private bucket: ask for a short-lived signed link (the database decides who may) */
+    await Promise.all(Object.values(det).filter(d=>d.image_path).map(async d=>{try{const{data:u,error:ie}=await sb.storage.from('signal-images').createSignedUrl(d.image_path,3600);if(!ie&&u)d.img_url=u.signedUrl}catch(_){}}));
   }
   S.signals=feed.map(x=>({...x,...(det[x.id]||{})})).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at));
 }
@@ -703,7 +743,7 @@ function sigCard(s,n){
     ${rail(s)}
     <dl class="stats"><div><dt>Confidence</dt><dd>${Number.isFinite(c)?c+'%':'-'}</dd>${Number.isFinite(c)?`<span class="meter"><i style="width:${c}%"></i></span>`:''}</div>
     <div><dt>Reward to risk (TP 1)</dt><dd>${r?f2(r)+' : 1':'-'}</dd></div></dl>
-    ${s.notes?`<p class="notes">${esc(s.notes)}</p>`:''}
+    ${s.img_url?`<a class='chartimg' href='${esc(s.img_url)}' target='_blank' rel='noopener noreferrer'><img src='${esc(s.img_url)}' alt='Signal chart' loading='lazy' referrerpolicy='no-referrer'></a>`:''}${s.notes?`<p class="notes">${esc(s.notes)}</p>`:''}
     <div class="foot"><button class="btn" data-copy="${esc(s.id)}">Copy signal</button></div></article>`;
 }
 function watch(root){
@@ -739,7 +779,7 @@ function renderPlans(){
         <span><h4>${p.label}${save>0?`<span class="save">Save ${save}%</span>`:''}</h4><small>${p.note}${pm}</small></span>
         <span class="price"><i>${gh?'GH₵':'$'}</i>${gh?p.ghs:p.usd}<small>${gh?'$'+p.usd:'GH₵'+p.ghs}</small></span></button>`}).join('')}</div>
     <div class="paybar"><div><small id="pb-m">${gh?'Pay with Mobile Money':'Pay with USDT'}</small><b id="pb-p">${gh?'GH₵'+sel.ghs:'$'+sel.usd}</b></div><button class="btn gold" id="pb-b" onclick="buy()">Continue with ${sel.label}</button></div>
-    <div class="note">Ghana pays in GH₵ with Mobile Money. Everyone else pays in USDT. In-app payment confirmation goes live in the next update, and plans activate once your payment is approved.</div>
+    <div class="note">Ghana pays in GH₵ with Mobile Money. Everyone else pays in USDT. After you pay, enter your payment reference in the app. Your plan activates once an administrator confirms the payment.</div>
     <p class="legal">Signals are market commentary, not financial advice. Gold trading carries substantial risk.</p>`;
 }
 function selectPlan(id){
@@ -752,7 +792,7 @@ function selectPlan(id){
 function buy(){
   const p=PLANS.find(x=>x.id===S.plan);
   if(!S.user)return openAuth('signup');
-  toast('Payment opens in the next update. You picked '+p.label+'.');
+  openPay(p.id);
 }
 const IC={me:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',u:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"/></svg>',p:'<svg class="i" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.500 1.500a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>',g:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.500 3 14.500 0 18M12 3c-3 3.500-3 14.500 0 18"/></svg>',b:'<svg class="i" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>'};
 const SPK=['8%;--y:72%;--d:0s','34%;--y:14%;--d:.9s;--s:.2rem','70%;--y:84%;--d:1.6s','90%;--y:30%;--d:.4s;--s:.22rem'].map(x=>`<i class="sp" style="--x:${x}"></i>`).join('');
@@ -763,7 +803,7 @@ function renderAccount(){
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
   const nm=p.display_name||m.full_name||'Member';
-  const un=p.username||'-';
+  const un=p.username||(S.profile?'':m.username)||'-'; /* sign-up name is used only when the profile row did not load; a loaded profile with no username shows a dash */
   const ph=p.phone||m.phone||'-';
   const ct=p.country||m.country||'-';
   const lim=a.free_limit||3,left=freeLeft(),full=hasFull();
@@ -779,9 +819,11 @@ function renderAccount(){
       <div class="row"><span>${IC.g}Country</span><b>${esc(ct)}</b></div>
       ${sms?`<div class="row"><span>${IC.b}SMS Alerts</span><b>On</b></div>`:''}
     </div>
+    ${payList()}
+    ${a.is_admin?`<button class='btn gold' data-act='adminOpen'>Admin dashboard</button>`:''}
     <button class="btn out" onclick="logout()">Log out</button>`;
 }
-function render(){renderBadge();renderFeed();renderPlans();renderAccount()}
+function render(){renderBadge();renderFeed();renderPlans();renderAccount();legalLinks()}
 
 /* ===== Actions ===== */
 let busy=false;
@@ -807,6 +849,21 @@ function setErr(m){const e=$('a-err');e.textContent=m||'';e.hidden=!m}
 function cc(){const g=$('a-country').value==='Ghana';$('a-phone').placeholder=g?'+233 24 000 0000':'+233 24 000 0000';$('a-ph').textContent=g?'Ghana mobile number':'Phone number (with country code)';$('a-sms').hidden=!(SMS_ALERTS&&g)}
 function openAuth(m){S.mode=m;authUI();openSheet('auth')}
 function authUI(){
+  const fg=S.mode==='forgot';
+  $('a-pw').hidden=fg;document.querySelector('label[for=a-pw]').hidden=fg;
+  $('a-legal').hidden=S.mode!=='signup';
+  if(fg){
+    setErr('');$('a-fields').hidden=true;
+    $('a-title').textContent='Reset password';
+    $('a-sub').textContent='Enter your email and we will send you a reset link.';
+    $('a-go').textContent='Send reset link';
+    $('a-sw').innerHTML=`<a href='#' data-act='authMode' data-id='login'>Back to log in</a>`;
+    return;
+  }
+  authUI0();
+  if(S.mode==='login')$('a-sw').insertAdjacentHTML('beforeend',`<br><a href='#' data-act='authMode' data-id='forgot'>Forgot password?</a>`);
+}
+function authUI0(){
   const su=S.mode==='signup';setErr('');cc();
   $('a-title').textContent=su?'Create account':'Welcome back';
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
@@ -820,6 +877,15 @@ async function submitAuth(){
   if(NOKEY)return toast('Add your publishable key in index.html first.');
   setErr('');
   const email=$('a-email').value.trim().toLowerCase(),pw=$('a-pw').value;
+  if(S.mode==='forgot'){
+    if(!/^[^ @]+@[^ @]+[.][^ @]+$/.test(email))return setErr('Enter a valid email address.');
+    if(Date.now()<fgUntil)return setErr('Please wait a moment before asking for another link.');
+    fgUntil=Date.now()+30000;
+    const fb=$('a-go');fb.disabled=true;
+    try{await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin})}catch(e){}
+    fb.disabled=false;closeSheet('auth');
+    return toast('If that email has an account, a reset link is on its way.');
+  }
   if(!email||!pw)return setErr('Enter your email and password.');
   const btn=$('a-go');btn.disabled=true;
   try{
@@ -837,31 +903,257 @@ async function submitAuth(){
       if(error)throw error;
       if(data.user&&data.user.identities&&!data.user.identities.length)throw new Error('This email is already registered. Log in instead.');
       closeSheet('auth');
-      if(data.session)toast('Welcome to PipPulse Gold.');else openSheet('confirm');
+      if(data.session)toast('Welcome to PipPulse Gold.');else{S.pendingEmail=email;openSheet('confirm')}
     }else{
       const{error}=await sb.auth.signInWithPassword({email,password:pw});
       if(error)throw error;
       closeSheet('auth');toast('Welcome back.');
     }
     $('a-pw').value='';fails=0;
-  }catch(e){if(++fails>=5){lockUntil=Date.now()+30000;fails=0}setErr(friendly(e))}
+  }catch(e){
+    if(/email not confirmed/i.test(String((e&&e.message)||''))){S.pendingEmail=email;closeSheet('auth');openSheet('confirm');return}
+    if(++fails>=5){lockUntil=Date.now()+30000;fails=0}setErr(friendly(e))}
   finally{btn.disabled=false}
 }
 async function logout(){await sb.auth.signOut();S.seen.clear();toast('You have been logged out.');show('signals')}
+
+/* ===== v3.0: plans from the database, payments, admin dashboard, password reset ===== */
+const ACT={};
+let fgUntil=0,resendAt=0;
+S.payments=[];S.pay={};S.pendingEmail=null;S.payPlan=null;
+S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},msg:''};
+ACT.closeSheet=id=>closeSheet(id);
+ACT.authMode=id=>{S.mode=id;authUI()};
+ACT.adminOpen=()=>showAdmin();
+ACT.adminBack=()=>show('account');
+
+async function loadPlans(){
+  if(NOKEY)return;
+  try{
+    const{data,error}=await sb.from('plans').select('id,label,note,months,price_ghs,price_usd,best,sort').order('sort');
+    if(error||!data||!data.length)return;
+    PLANS.length=0;
+    data.forEach(r=>PLANS.push({id:r.id,label:r.label,months:r.months,note:r.note,ghs:Number(r.price_ghs),usd:Number(r.price_usd),best:!!r.best}));
+    if(!PLANS.some(p=>p.id===S.plan))S.plan=PLANS[0].id;
+    renderPlans();
+  }catch(e){}
+}
+function legalLinks(){
+  document.querySelectorAll('.legal').forEach(p=>{if(!p.querySelector('a'))p.insertAdjacentHTML('beforeend',` <a href='legal.html#terms'>Terms</a> · <a href='legal.html#privacy'>Privacy</a> · <a href='legal.html#risk'>Risk disclosure</a>`)});
+}
+
+/* --- Password reset and resend confirmation --- */
+ACT.resend=async(_,btn)=>{
+  if(!S.pendingEmail)return toast('Sign up or log in first.');
+  if(Date.now()<resendAt)return toast('Wait a minute before asking for another email.');
+  resendAt=Date.now()+60000;btn.disabled=true;
+  try{const{error}=await sb.auth.resend({type:'signup',email:S.pendingEmail,options:{emailRedirectTo:location.origin}});if(error)throw error;toast('Confirmation email sent again.')}
+  catch(e){toast(friendly(e))}finally{btn.disabled=false}
+};
+ACT.resetSave=async(_,btn)=>{
+  const pw=$('r-pw').value,err=$('r-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
+  if(pw.length<8||!/[A-Za-z]/.test(pw)||!/[0-9]/.test(pw))return fail('Password needs at least 8 characters, with a letter and a number.');
+  btn.disabled=true;
+  try{const{error}=await sb.auth.updateUser({password:pw});if(error)throw error;$('r-pw').value='';closeSheet('reset');toast('Password updated.');refresh()}
+  catch(e){fail(friendly(e))}finally{btn.disabled=false}
+};
+
+/* --- Payments (amounts are decided by the server, never by this page) --- */
+async function loadPayments(){try{const{data,error}=await sb.rpc('my_payments');S.payments=error?[]:(data||[])}catch(e){S.payments=[]}}
+const PAYKEYS=['momo_network','momo_number','momo_name','usdt_network','usdt_address','support_contact'];
+async function loadPaySettings(){try{const{data}=await sb.from('app_settings').select('key,value').in('key',PAYKEYS);S.pay={};(data||[]).forEach(r=>{S.pay[r.key]=r.value})}catch(e){}}
+function payMethod(){return S.profile&&S.profile.country==='Ghana'?'momo':'usdt'}
+async function openPay(id){
+  if(!PLANS.find(x=>x.id===id))return;
+  S.payPlan=id;$('pay-body').innerHTML=`<h3>Payment details</h3><p class='mut'>Loading…</p>`;openSheet('pay');
+  await loadPaySettings();renderPay();
+}
+function renderPay(){
+  const p=PLANS.find(x=>x.id===S.payPlan);if(!p)return;
+  const m=payMethod(),d=S.pay||{},momo=m==='momo',amt=momo?'GH₵'+p.ghs:'$'+p.usd;
+  const rows=momo?[['Network',d.momo_network],['Number',d.momo_number,1],['Account name',d.momo_name]]:[['Network',d.usdt_network],['Wallet address',d.usdt_address,1]];
+  const ready=rows.every(r=>r[1]);
+  const list=rows.filter(r=>r[1]).map(r=>`<div class='row'><span>${esc(r[0])}</span><b style='overflow-wrap:anywhere'>${esc(r[1])}</b>${r[2]?`<button class='btn mini' data-copytext='${esc(r[1])}'>Copy</button>`:''}</div>`).join('');
+  $('pay-body').innerHTML=`<h3>Pay for ${esc(p.label)}</h3>
+   <p class='mut' style='margin:0'>Send exactly <b>${esc(amt)}</b> by ${momo?'Mobile Money':'USDT'}, then enter the payment reference below.</p>
+   ${ready?`<div class='card rows' style='margin-top:.9rem'>${list}</div>`:`<div class='note'>Payment details have not been added yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`}
+   <label for='p-ref'>${momo?'Mobile Money transaction ID':'USDT transaction hash'}</label>
+   <input id='p-ref' maxlength='150' autocomplete='off' autocapitalize='none' spellcheck='false'>
+   <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet (optional)'}</label>
+   <input id='p-sender' maxlength='60' autocomplete='off'>
+   <p class='err' id='p-err' role='alert' hidden></p>
+   <button class='btn gold' data-act='paySubmit'${ready?'':' disabled'}>I have paid, submit</button>
+   <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>
+   <p class='hint'>Your plan activates after an administrator confirms the payment. Never share your password with anyone.</p>`;
+}
+ACT.paySubmit=async(_,btn)=>{
+  const ref=$('p-ref').value.trim(),sender=$('p-sender').value.trim(),err=$('p-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
+  if(ref.length<3)return fail('Enter the payment reference or transaction ID.');
+  btn.disabled=true;
+  try{
+    const{data,error}=await sb.rpc('submit_payment',{p_plan:S.payPlan,p_method:payMethod(),p_reference:ref,p_sender:sender||null});
+    if(error)throw error;
+    if(!data||!data.success)return fail((data&&data.message)||'Could not submit the payment.');
+    closeSheet('pay');toast('Payment submitted. We will confirm it soon.');
+    await loadPayments();render();show('account');
+  }catch(e){fail(friendly(e))}
+  finally{btn.disabled=false}
+};
+function payList(){
+  const L=S.payments||[];if(!L.length)return '';
+  const lab={pending:'Awaiting review',activated:'Activated',rejected:'Rejected'};
+  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
+}
+
+/* --- Admin dashboard (the page only shows it; the database enforces who may use it) --- */
+function showAdmin(){
+  if(!S.access||!S.access.is_admin)return;
+  VIEWS.forEach(x=>{$('v-'+x).hidden=true;$('n-'+x).classList.remove('on')});
+  $('v-admin').hidden=false;scrollTo({top:0});renderAdmin();loadAdminTab();
+}
+const ADM=[['payments','Payments'],['post','Post signal'],['settings','Settings'],['audit','Activity']];
+function renderAdmin(){
+  const A=S.admin;let inner;
+  if(A.msg)inner=`<div class='empty'>${esc(A.msg)}</div>`;
+  else if(A.tab==='payments')inner=adminPayHtml();
+  else if(A.tab==='post')inner=adminPostHtml();
+  else if(A.tab==='settings')inner=adminSettingsHtml();
+  else inner=adminAuditHtml();
+  $('v-admin').innerHTML=`<div class='sec-h'><h3>Admin dashboard</h3><button class='btn mini' data-act='adminBack'>Back</button></div>
+  <div class='atabs'>${ADM.map(t=>`<button data-act='adminTab' data-id='${t[0]}' class='${A.tab===t[0]?'on':''}'>${t[1]}</button>`).join('')}</div>${inner}`;
+}
+async function loadAdminTab(){
+  const A=S.admin;A.msg='';
+  try{
+    if(A.tab==='payments'){A.msg='Loading…';renderAdmin();const{data,error}=await sb.rpc('admin_list_payments',{p_status:A.filter});A.msg='';if(error)throw error;A.list=data||[]}
+    else if(A.tab==='audit'){A.msg='Loading…';renderAdmin();const{data,error}=await sb.rpc('admin_list_audit',{p_limit:50});A.msg='';if(error)throw error;A.audit=data||[]}
+    else if(A.tab==='settings'){const{data,error}=await sb.from('app_settings').select('key,value');if(error)throw error;A.settings={};(data||[]).forEach(r=>{A.settings[r.key]=r.value})}
+  }catch(e){
+    A.msg=/could not find|does not exist|42883|PGRST202/i.test(String((e&&(e.code+' '+e.message))||''))?'Admin tools are not installed yet. Run pippulse_step2_payments_admin.sql in Supabase.':friendly(e);
+  }
+  renderAdmin();
+}
+ACT.adminTab=id=>{S.admin.tab=id;S.admin.msg='';renderAdmin();loadAdminTab()};
+ACT.adminFilter=id=>{S.admin.filter=id;loadAdminTab()};
+
+function adminPayHtml(){
+  const A=S.admin,F=[['pending','Pending'],['activated','Activated'],['rejected','Rejected'],['all','All']];
+  const chips=`<div class='atabs'>${F.map(f=>`<button data-act='adminFilter' data-id='${f[0]}' class='${A.filter===f[0]?'on':''}'>${f[1]}</button>`).join('')}</div>`;
+  if(!A.list.length)return chips+`<div class='empty'>No ${A.filter==='all'?'':esc(A.filter)+' '}payments.</div>`;
+  return chips+A.list.map(x=>{
+    const pl=(PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label,cur=x.currency==='GHS'?'GH₵':'$',who=esc(x.display_name||x.email||'User')+(x.username?' @'+esc(x.username):'');
+    return `<div class='card'><div class='uh'><span>${who}</span><b>${cur}${esc(x.amount)}</b></div>
+    <p class='hint'>${esc([x.email,x.phone,x.country].filter(Boolean).join(' · '))}</p>
+    <div class='row'><span>Plan</span><b>${esc(pl)}</b></div>
+    <div class='row'><span>Method</span><b>${x.payment_method==='momo'?'Mobile Money':'USDT'}</b></div>
+    <div class='row'><span>Reference</span><b style='overflow-wrap:anywhere'>${esc(x.reference)}</b></div>
+    ${x.sender?`<div class='row'><span>Paid from</span><b style='overflow-wrap:anywhere'>${esc(x.sender)}</b></div>`:''}
+    <div class='row'><span>Submitted</span><b>${esc(new Date(x.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))}</b></div>
+    ${x.status==='pending'?`<label for='pn-${esc(x.id)}'>Note (shown to the user if rejected)</label><input id='pn-${esc(x.id)}' maxlength='1000'><div class='two'><button class='btn' data-act='payReject' data-id='${esc(x.id)}'>Reject</button><button class='btn gold' data-act='payApprove' data-id='${esc(x.id)}'>Approve</button></div>`:`<div class='row'><span>Status</span><b>${esc(x.status)}</b></div>${x.admin_note?`<p class='hint'>${esc(x.admin_note)}</p>`:''}`}</div>`}).join('');
+}
+async function reviewPay(id,ok,btn){
+  const note=(($('pn-'+id)||{}).value||'').trim();
+  if(!ok&&!note)return toast('Add a short reason before rejecting.');
+  if(!confirm(ok?'Approve this payment and activate the plan?':'Reject this payment?'))return;
+  btn.disabled=true;
+  try{
+    const{data,error}=await sb.rpc('review_payment',{p_payment_id:id,p_approve:ok,p_note:note||null});
+    if(error)throw error;
+    toast((data&&data.message)||(ok?'Payment approved.':'Payment rejected.'));
+    await loadAdminTab();
+  }catch(e){toast(friendly(e))}finally{btn.disabled=false}
+}
+ACT.payApprove=(id,b)=>reviewPay(id,true,b);
+ACT.payReject=(id,b)=>reviewPay(id,false,b);
+
+function adminPostHtml(){
+  const recent=S.signals.slice(0,8).map(s=>`<div class='row'><div><b>XAUUSD ${esc(s.direction||'')}</b><small class='pn'>${esc(new Date(s.published_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))} · ${esc(s.status)}</small></div>${s.status==='published'?`<button class='btn mini' data-act='sigClose' data-id='${esc(s.id)}'>Close</button>`:`<span>Closed</span>`}</div>`).join('');
+  return `<div class='card'><h3>Post a signal</h3>
+  <label for='s-dir'>Direction</label><select id='s-dir'><option>BUY</option><option>SELL</option></select>
+  <div class='two'><div><label for='s-lo'>Entry low</label><input id='s-lo' inputmode='decimal'></div><div><label for='s-hi'>Entry high</label><input id='s-hi' inputmode='decimal' placeholder='Same as low'></div></div>
+  <label for='s-sl'>Stop loss</label><input id='s-sl' inputmode='decimal'>
+  <label for='s-tp'>Take profits (comma separated)</label><input id='s-tp' placeholder='2410, 2418, 2430'>
+  <label for='s-conf'>Confidence (0 to 100, optional)</label><input id='s-conf' inputmode='numeric'>
+  <label for='s-notes'>Notes (optional)</label><textarea id='s-notes' maxlength='2000'></textarea>
+  <label for='s-img'>Chart image (optional, PNG, JPG or WebP, up to 2 MB)</label><input id='s-img' type='file' accept='image/png,image/jpeg,image/webp'>
+  <p class='err' id='s-err' role='alert' hidden></p>
+  <button class='btn gold' data-act='sigPublish'>Publish signal</button></div>
+  <div class='card'><div class='uh'><span>Recent signals</span></div>${recent||`<p class='hint'>No signals yet.</p>`}</div>`;
+}
+ACT.sigPublish=async(_,btn)=>{
+  const g=id=>$(id).value.trim(),err=$('s-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
+  const dir=g('s-dir'),lo=Number(g('s-lo')),hi=Number(g('s-hi')||g('s-lo')),sl=Number(g('s-sl'));
+  const tps=g('s-tp').split(/[ ,]+/).filter(Boolean).map(Number),conf=g('s-conf')===''?null:Number(g('s-conf')),notes=g('s-notes'),file=$('s-img').files[0];
+  if(![lo,hi,sl].every(v=>Number.isFinite(v)&&v>0))return fail('Enter valid entry and stop loss prices.');
+  if(hi<lo)return fail('Entry high must be at least entry low.');
+  if(!tps.length||tps.length>10||!tps.every(v=>Number.isFinite(v)&&v>0))return fail('Enter 1 to 10 take profit prices, separated by commas.');
+  const buy=dir==='BUY';
+  if(buy?!(sl<lo):!(sl>hi))return fail(buy?'For a BUY the stop loss must be below the entry zone.':'For a SELL the stop loss must be above the entry zone.');
+  const okTp=buy?tps.every((v,i)=>v>hi&&(!i||v>tps[i-1])):tps.every((v,i)=>v<lo&&(!i||v<tps[i-1]));
+  if(!okTp)return fail(buy?'For a BUY, take profits must rise in order and sit above the entry zone.':'For a SELL, take profits must fall in order and sit below the entry zone.');
+  if(conf!==null&&!(Number.isInteger(conf)&&conf>=0&&conf<=100))return fail('Confidence must be a whole number from 0 to 100.');
+  if(notes.length>2000)return fail('Notes are limited to 2000 characters.');
+  if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2097152))return fail('The chart image must be PNG, JPG or WebP, up to 2 MB.');
+  if(!confirm('Publish this '+dir+' signal now? Published signals cannot be deleted.'))return;
+  btn.disabled=true;
+  try{
+    const{data:row,error}=await sb.from('signals').insert({symbol:'XAUUSD',direction:dir,entry_low:lo,entry_high:hi,stop_loss:sl,take_profits:tps,confidence:conf,notes:notes||null,status:'published',published_at:new Date().toISOString(),created_by:S.user.id}).select('id').single();
+    if(error)throw error;
+    let imgMsg='';
+    if(file){
+      const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type],path=row.id+'/'+crypto.randomUUID()+'.'+ext;
+      const up=await sb.storage.from('signal-images').upload(path,file,{contentType:file.type,upsert:false});
+      if(up.error)imgMsg=' The image did not upload.';
+      else{const u=await sb.from('signals').update({image_path:path}).eq('id',row.id);if(u.error)imgMsg=' The image did not attach.'}
+    }
+    toast('Signal published.'+imgMsg);
+    await refresh();renderAdmin();
+  }catch(e){fail('Could not publish: '+((e&&e.message)||'error'))}
+  finally{btn.disabled=false}
+};
+ACT.sigClose=async(id,btn)=>{
+  if(!confirm('Mark this signal as closed?'))return;
+  btn.disabled=true;
+  try{const{error}=await sb.from('signals').update({status:'closed'}).eq('id',id);if(error)throw error;toast('Signal closed.');await refresh();renderAdmin()}
+  catch(e){toast('Could not close: '+((e&&e.message)||'error'))}finally{btn.disabled=false}
+};
+
+const SETF=[['headline','Homepage headline',1],['description','Homepage description',1],['momo_network','Mobile Money network (for example MTN)',0],['momo_number','Mobile Money number',0],['momo_name','Mobile Money account name',0],['usdt_network','USDT network (for example TRC20)',0],['usdt_address','USDT wallet address',0],['support_contact','Support contact shown to users',0]];
+function adminSettingsHtml(){
+  const v=S.admin.settings;
+  return `<div class='card'><h3>Settings</h3><p class='hint'>Payment details are shown to signed-in users when they pay. Double-check every digit and character.</p>
+  ${SETF.map(f=>`<label for='st-${f[0]}'>${esc(f[1])}</label><input id='st-${f[0]}' maxlength='2000' value='${esc(v[f[0]]||'')}' autocomplete='off'>`).join('')}
+  <button class='btn gold' data-act='setSave'>Save settings</button></div>`;
+}
+ACT.setSave=async(_,btn)=>{
+  const cur=S.admin.settings,rows=SETF.filter(f=>$('st-'+f[0]).value.trim()!==(cur[f[0]]||'')).map(f=>({key:f[0],value:$('st-'+f[0]).value.trim(),is_public:!!f[2],updated_at:new Date().toISOString()}));
+  if(!rows.length)return toast('Nothing changed.');
+  btn.disabled=true;
+  try{const{error}=await sb.from('app_settings').upsert(rows,{onConflict:'key'});if(error)throw error;toast('Settings saved.');await loadAdminTab()}
+  catch(e){toast('Could not save: '+((e&&e.message)||'error'))}finally{btn.disabled=false}
+};
+
+function adminAuditHtml(){
+  const L=S.admin.audit;if(!L.length)return `<div class='empty'>No activity yet.</div>`;
+  return `<div class='card rows'>${L.map(a=>{const d=a.details||{},bits=Object.keys(d).map(k=>k+': '+d[k]).join(', ');return `<div class='row'><div><b>${esc(String(a.action).split('_').join(' '))}</b><small class='pn'>${esc(a.actor_name||'')}${bits?' · '+esc(bits):''}</small></div><span>${esc(new Date(a.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</span></div>`}).join('')}</div>`;
+}
 
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
   const u=e.target.closest('[data-unlock]');if(u)return unlock(u.dataset.unlock,u);
   const c=e.target.closest('[data-copy]');if(c)copySig(c.dataset.copy);
+  const ct=e.target.closest('[data-copytext]');if(ct)navigator.clipboard.writeText(ct.dataset.copytext).then(()=>toast('Copied.'),()=>toast('Copy is not available on this device.'));
+  const ac=e.target.closest('[data-act]');if(ac&&ACT[ac.dataset.act]){if(ac.tagName==='A')e.preventDefault();ACT[ac.dataset.act](ac.dataset.id,ac)}
 });
 
 /* ===== Start ===== */
 sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==='PASSWORD_RECOVERY'){setTimeout(()=>openSheet('reset'),0);return}
   if(ev==='INITIAL_SESSION'||ev==='TOKEN_REFRESHED')return;
   if(ev==='SIGNED_IN'&&S.user&&session&&session.user.id===S.user.id)return;
   setTimeout(refresh,0);
 });
-setHL($('hl').textContent);loadSettings();refresh();
+setHL($('hl').textContent);loadSettings();loadPlans();refresh();
 </script>
 </body>
 </html>
