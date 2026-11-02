@@ -403,10 +403,10 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
   
   <div id="a-fields">
     <label for="a-name">Full Name</label>
-    <input id="a-name" autocomplete="name" placeholder="Immergensy Junior">
+    <input id="a-name" autocomplete="name" maxlength="60" placeholder="Immergensy Junior">
     
     <label for="a-username">Username</label>
-    <input id="a-username" autocomplete="username" placeholder="immergensy_junior">
+    <input id="a-username" autocomplete="username" maxlength="20" autocapitalize="none" spellcheck="false" placeholder="immergensy_junior">
     
     <label for="a-country">Country</label>
     <select id="a-country" onchange="cc()">
@@ -430,7 +430,7 @@ nav #n-plans{color:#C9A24C}nav #n-plans.on{color:var(--gold)}
   <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
   
   <label for="a-pw">Password</label>
-  <input id="a-pw" type="password" autocomplete="current-password" placeholder="At least 8 characters">
+  <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
   
   <p class="err" id="a-err" role="alert" hidden></p>
   
@@ -484,6 +484,8 @@ let tt;
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3400)}
 function friendly(e){
   const m=String((e&&e.message)||e||'');
+  /* Plain Error objects are our own form-validation messages: show them as written (library errors are subclasses) */
+  if(e instanceof Error&&Object.getPrototypeOf(e)===Error.prototype&&e.message)return e.message;
   if(/failed to fetch|networkerror|load failed/i.test(m))return 'No connection. Check your internet and try again.';
   if(/invalid login/i.test(m))return 'Email or password is incorrect.';
   if(/email not confirmed/i.test(m))return 'Confirm your email first. Open the link we sent you, then log in.';
@@ -761,7 +763,7 @@ function renderAccount(){
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
   const nm=p.display_name||m.full_name||'Member';
-  const un=p.username||m.username||'-';
+  const un=p.username||'-';
   const ph=p.phone||m.phone||'-';
   const ct=p.country||m.country||'-';
   const lim=a.free_limit||3,left=freeLeft(),full=hasFull();
@@ -822,13 +824,15 @@ async function submitAuth(){
   const btn=$('a-go');btn.disabled=true;
   try{
     if(S.mode==='signup'){
-      const name=$('a-name').value.trim().slice(0,80),username=$('a-username').value.trim(),country=$('a-country').value;
+      const name=$('a-name').value.trim().slice(0,60),username=$('a-username').value.trim(),country=$('a-country').value;
       if(!name)throw new Error('Enter your full name.');
       if(!/^[A-Za-z0-9_]{3,20}$/.test(username))throw new Error('Username must be 3 to 20 letters, numbers or underscores.');
       if(!country)throw new Error('Select your country.');
       const phone=normPhone($('a-phone').value,country);
       if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., +233 24 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
       if(pw.length<8||!/[A-Za-z]/.test(pw)||!/\d/.test(pw))throw new Error('Password needs at least 8 characters, with a letter and a number.');
+      const{data:avail,error:ue}=await sb.rpc('is_username_available',{p_username:username});
+      if(!ue&&avail===false)throw new Error('That username is taken. Try another.');
       const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name,username,phone,country},emailRedirectTo:location.origin}});
       if(error)throw error;
       if(data.user&&data.user.identities&&!data.user.identities.length)throw new Error('This email is already registered. Log in instead.');
