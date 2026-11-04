@@ -3,9 +3,9 @@
 
 **Purpose:** Preserve a detailed record of the work completed, the database state inspected, decisions made, known compatibility issues, and the planned direction for PipPulse.
 
-**Status:** Frontend rebuilt (v2) and restyled (v2.1). Step 1 database migration revised (rev 1.1) after an independent review, but **not yet confirmed executed**. Payments, admin dashboard and private images still to build.  
-**Last updated:** 1 November 2026  
-**Frontend file:** `index.html` inspected on 1 November 2026, replaced with a Supabase-connected v2, then restyled as v2.1 the same day (see Sections 14 and 16).
+**Status:** Frontend is at v2.3 (the current `index.html`, described in Section 17). Step 1 database migration is at revision 1.3, aligned to that frontend, and **not yet confirmed executed**. Payments, admin dashboard and private images still to build.  
+**Last updated:** 2 November 2026  
+**Frontend file:** `index.html`: replaced with a Supabase-connected v2 on 1 November 2026, restyled as v2.1 the same day, then updated to v2.2 (username, Ghana phone handling, contained hero chart, redesigned Premium and Account pages). See Sections 14, 16 and 17.
 
 ---
 
@@ -298,7 +298,7 @@ Known original structure:
 - Allowed roles: `user`, `admin`.
 - `created_at` defaults to `now()`.
 
-The alternative V3 design proposes adding profile metadata such as email, phone, and country. Those fields have **not** yet been added.
+Migration revision 1.2 adds four nullable columns: `email`, `phone`, `country` and `username`. They do **not** exist until the migration has been run.
 
 ## 5.2 Current `public.signals` columns
 
@@ -578,7 +578,8 @@ The alternative script drops only selected storage policies. Any other permissiv
 - [ ] Inspect full table constraints, indexes, triggers, grants, and function definitions before final migration.
 - [x] Inspect `signal_unlocks` columns, RLS and grants. (Done 1 Nov 2026; its constraints still to inspect)
 - [x] Verify exact definitions and return types of all five Section 3 functions. (Done 1 Nov 2026, Section 14.2)
-- [ ] Prepare a migration specifically compatible with the existing database. (Step 1 revision 1.1 written; Steps 2 and 3 pending; see Sections 14.3 and 16)
+- [ ] Prepare a migration specifically compatible with the existing database. (Step 1 revision 1.2 written and aligned to the current frontend; Steps 2 and 3 pending; see Sections 14.3, 16 and 17)
+- [ ] Confirm the live `unlock_signal` and `get_signal_feed` match the contract the frontend expects (Section 17.2; HANDOVER Step 0).
 - [ ] Run the read-only pre-flight queries in `HANDOVER.md` (Step 0) and keep the output.
 - [ ] Create and secure the private signal-image storage bucket.
 - [ ] Replace the broad published-signal SELECT policy with the intended entitlement-based policy.
@@ -701,14 +702,14 @@ Only after the new frontend is deployed and verified:
 
 # 12. Exact next action
 
-**The next action is to run the Step 1 migration (revision 1.1), verify it, then deploy the v2.1 frontend and report the results.**
+**The next action is to run the Step 1 migration (revision 1.2), verify it, then deploy the v2.2 frontend and report the results.**
 
 1. Run the Step 0 pre-flight queries in `HANDOVER.md` (read-only) and keep the output.
-2. Run `pippulse_step1_migration.sql` (revision 1.1) in Supabase SQL Editor. It is one transaction, backs up all five data tables first, and rolls back by itself if a safety check fails. It is safe to run even if revision 1.0 was run before.
+2. Run `pippulse_step1_migration.sql` (revision 1.2) in Supabase SQL Editor. It is one transaction, backs up all five data tables first, and rolls back by itself if a safety check fails. It is safe to run even if revision 1.0 or 1.1 was run before.
 3. Run the verification queries in `HANDOVER.md`.
-4. Only after step 3 passes: commit `index.html` (v2.1) to GitHub; Cloudflare Pages deploys it.
+4. Only after step 3 passes: commit `index.html` (v2.2) to GitHub; Cloudflare Pages deploys it.
 5. Register on the live site, confirm the email, then promote that account to administrator with the SQL line in Section 14.5.
-6. Insert the four test signals (bottom of the SQL file) and run tests 1 to 11 in `HANDOVER.md`.
+6. Insert the four test signals (bottom of the SQL file) and run tests 1 to 15 in `HANDOVER.md`.
 7. Record the outcome in Section 13 (change log) and send any errors for correction.
 
 Only after Step 1 is confirmed do we build Drop 2 (payments, approvals, admin dashboard) and Drop 3 (private chart images).
@@ -736,6 +737,11 @@ Only after Step 1 is confirmed do we build Drop 2 (payments, approvals, admin da
 | 2026-11-01 | Revised migration to rev 1.1 | Written; **not yet confirmed executed** |
 | 2026-11-01 | Restyled frontend as v2.1 (price rail, error handling) | Written; not yet deployed or tested live |
 | 2026-11-01 | Updated HANDOVER.md (pre-flight, four test signals, extra tests) | Done |
+| 2026-11-02 | Frontend update to v2.2: hero chart moved into a contained panel, redesigned Premium and Account pages, new bottom-nav icons | Rendered in a headless browser with a stand-in for supabase-js; **not tested against the live database** |
+| 2026-11-02 | Audited `index.html` against README, HANDOVER and the SQL | Section 17: one blocking mismatch (`profiles.username`) and several smaller ones |
+| 2026-11-02 | Migration revised to rev 1.2 (username, explicit SELECT grants) | Written; syntax not run against Postgres; **not yet confirmed executed** |
+| 2026-11-02 | Rewrote HANDOVER.md (revision 3) and added README Section 17 | Done |
+| 2026-11-02 | Security hardening: SQL rev 1.3 (unique usernames, availability function, safer signup fallback), frontend v2.3 (username check, validation messages now shown instead of a generic error, 60-character name, input limits), `_headers` for Cloudflare Pages | Written on a GitLab branch; **not yet run or deployed** |
 
 ---
 
@@ -798,6 +804,8 @@ Known assumption: the legacy BUY/SELL check constraints are evaluated against th
 
 **Revision 1.1 (1 Nov 2026)** keeps everything above and adds: backups of all five data tables and a locked backup schema; the signup function now never blocks signup (logs a warning instead); table-wide UPDATE on `profiles` is revoked before the column-level grant; `anon` loses all access to data tables; clients can no longer write `signal_unlocks` directly; the legacy sync trigger carries edits to the old columns into the new ones instead of overwriting them; `set_signal_published_at()` is removed from client EXECUTE; a tripwire aborts the migration if any other SELECT/ALL policy exists on `signals`; and a final assertion block checks permissions before COMMIT. No second signup trigger is created: `on_auth_user_created` already exists and calls `handle_new_user()`.
 
+**Revision 1.2 (2 Nov 2026)** aligns the migration with the current `index.html` (Section 17) and keeps everything in 1.1. It adds: a `profiles.username` column (check: 3 to 20 letters, numbers or underscores, the same rule as the sign-up form) that `handle_new_user()` now fills from sign-up metadata; a backfill of username, phone and country from sign-up metadata for accounts created before the migration; `username` among the columns a user may edit (still never `role` or `email`); explicit `SELECT` grants for `authenticated` on `profiles` and `signals` (row security still decides which rows are visible), which the Account page and unlocked-signal reads depend on; and final assertions for those grants. Usernames are not unique (Section 17.3).
+
 ## 14.4 Frontend v2 (`index.html`)
 
 Connected to Supabase Auth, profiles, the live signal feed and signal unlocking. Redesigned: sentence-case interface, SVG icons, loading skeletons, and a price-ladder layout on each signal showing take profits, entry zone and stop loss in price order. Locked signals receive **no trade data** from the server.
@@ -812,6 +820,8 @@ Connected to Supabase Auth, profiles, the live signal feed and signal unlocking.
 - Verified so far: JavaScript syntax check only. Not tested against the live database.
 
 **v2.1 (1 Nov 2026), same concept, new look.** Display font Bricolage Grotesque with Manrope for text. Each unlocked signal has a **price rail**: vertical spacing is proportional to real price distance, the entry zone is a gold band, the profit side is green and the risk side red, with labels spaced so they never overlap and the distance from entry in price points. Also: confidence meter, reward-to-risk to TP 1, locked cards with a placeholder instead of data, "Save x%" and approximate monthly price on Plans (calculated from `PLANS`), free-unlock dots on Account, signals sorted newest first, friendly error messages, inline login errors, a retry state when the feed fails, Esc and tap-outside to close sheets, double-tap protection on Unlock, favicon and meta tags. Supabase calls, access logic, prices and the 3 free unlocks are unchanged. Not run or rendered by the author; test on a real phone (HANDOVER test 11).
+
+**Superseded in part (2 Nov 2026).** The fonts named above are out of date (the current file uses Inter and Plus Jakarta Sans), and the v2.1 description did not cover the username field the sign-up form collects. Section 17 describes the frontend as it now exists.
 
 ## 14.5 Administrator access (replaces the old passcode)
 
@@ -846,17 +856,17 @@ Free unlock allowance: **3**, set in `unlock_signal` and `get_my_access` and sho
 - **Free unlocks are permanent and can be spent on old closed signals.** Add a confirmation before an unlock and decide whether free unlocks apply to open signals only.
 - **Google Play:** if the app is wrapped for the Play Store, check Google's current policy on subscriptions and billing, and its rules for trading-signal apps. Manual Mobile Money/USDT approval may not be allowed inside a Play app. Also required: privacy policy, terms, risk disclaimer.
 - **Public repo exposure:** Cloudflare Pages serves everything in the output directory (`/`), so `README.md` and any `.sql` files in the repo root are publicly downloadable. Keep secrets out of them, or move the site into a `public/` folder and set that as the output directory.
-- **Hardening:** pin the `supabase-js` version with an integrity hash instead of the floating `@2`, and add security headers (a `_headers` file on Cloudflare Pages).
+- **Hardening:** `supabase-js` is now pinned to version 2.81.1 on jsDelivr (no longer floating `@2`), but has no Subresource Integrity hash yet. A Content-Security-Policy `<meta>` tag is present (Section 17.4). Still to add: an integrity hash for the script, and real response headers (a `_headers` file on Cloudflare Pages), because a meta tag cannot set every header and the policy still allows inline scripts.
 - **Never** put the Supabase secret/service_role key or the database password in the frontend, GitHub or this file.
 
 # 15. Remaining plan
 
 | Drop | Contents | Status |
 |---|---|---|
-| Step 1 | Migration (rev 1.1) + v2.1 frontend (Auth, profiles, feed, unlock) | Written, awaiting execution and testing |
+| Step 1 | Migration (rev 1.2) + v2.2 frontend (Auth, profiles, feed, unlock) | Written, awaiting execution and testing |
 | Drop 2 | `submit_payment` / `review_payment` functions, pending-payment limit, subscription activation, audit log, payment instructions in `app_settings`, admin dashboard (post/edit signals, review payments, settings) | Not started |
 | Drop 3 | Private `signal-images` bucket, admin upload, image access tied to signal entitlement | Not started |
-| Drop 4 | Forgot password, resend confirmation, confirm-before-unlock, legal pages, pin supabase-js version, security headers, final testing, README update | Not started |
+| Drop 4 | Forgot password, resend confirmation, confirm-before-unlock, legal pages, integrity hash for supabase-js (version already pinned), security headers, final testing, README update | Not started |
 
 ---
 
@@ -880,6 +890,126 @@ An outside review of README, HANDOVER, the Step 1 SQL and `index.html` rated the
 | Password recovery, payments, admin dashboard, chart images missing | Planned in Drops 2 to 4; not built yet |
 
 Additional note: `app_settings` rows are readable by every signed-in user. Payment instructions are meant to be shown to them, but never store secrets there.
+
+# 17. Frontend and database alignment audit (2 Nov 2026)
+
+The current `index.html` was read in full and compared with Sections 1 to 16, `HANDOVER.md` and the Step 1 SQL. Every Supabase call the page makes is listed below, with what the database must provide. The Supabase publishable key is in `index.html` (public by design) and is not reproduced here.
+
+## 17.1 Files and versions
+
+| File | Version | State |
+|---|---|---|
+| `index.html` | v2.2 | Written, not deployed, not tested against the live database |
+| `pippulse_step1_migration.sql` | rev 1.2 | Written, not executed, not run against Postgres by the author |
+| `HANDOVER.md` | revision 3 | Current |
+
+## 17.2 Every Supabase call in the page
+
+| Call | Sends | Reads | What the database must provide | Status |
+|---|---|---|---|---|
+| `from('app_settings').select('key,value').in('key',['headline','description'])`, run before login | none | `key`, `value` | Rows with `is_public = true` readable by `anon` | Migration section 9 |
+| `auth.signUp({ email, password, options: { data: { full_name, username, phone, country }, emailRedirectTo: location.origin } })` | sign-up metadata | `data.session`, `data.user.identities` | `handle_new_user()` copies the metadata into `profiles` | `username` was missing in rev 1.1; fixed in rev 1.2 |
+| `auth.signInWithPassword`, `auth.signOut`, `auth.getSession`, `auth.onAuthStateChange` | credentials | session | Supabase Auth only | No database work |
+| `rpc('get_my_access')` | nothing | `is_admin`, `premium`, `free_limit`, `free_used`, `subscription.plan`, `subscription.expires_at` | Function with exactly these keys | Migration section 6 |
+| `from('profiles').select('display_name,username,email,phone,country').eq('id', user.id).maybeSingle()` | own id | the five fields | Column `username`; `SELECT` grant for `authenticated`; own-row policy | Column and grant added in rev 1.2 |
+| `rpc('get_signal_feed').limit(50)` | nothing | `id`, `status`, `published_at`, `unlocked` (the function also returns `symbol`, unused) | Existing function, unchanged | Confirm with HANDOVER Step 0 |
+| `from('signals').select('id,direction,entry_low,entry_high,stop_loss,take_profits,confidence,notes').in('id', unlockedIds)` | ids of unlocked signals | the eight fields | `SELECT` grant for `authenticated`; the entitlement policy filters rows | Policy in section 7; grant added in rev 1.2 |
+| `rpc('unlock_signal', { p_signal_id })` | the signal id, parameter named `p_signal_id` | `success`; `reason` (the page checks for `FREE_LIMIT_REACHED`); `message` | JSONB result with those keys and that parameter name | **Not verified.** HANDOVER Step 0 prints the live definition |
+
+The page never writes to any table directly. Everything that changes data goes through `auth` or `unlock_signal`.
+
+## 17.3 Mismatches found and how each was handled
+
+| # | Finding | Severity | Resolution |
+|---|---|---|---|
+| 1 | The sign-up form collects a **username** and the page reads `profiles.username`, but `profiles` had no such column and `handle_new_user()` ignored it. Rev 1.1 would have made the whole profile query fail, leaving the Account page with no profile and Ghana users shown dollar prices | Blocking | Rev 1.2 adds the column, a format check, the trigger copy, a backfill, and edit permission |
+| 2 | Nothing in the migration guaranteed `authenticated` holds `SELECT` on `profiles` or `signals`; the page needs both | High | Explicit grants added in rev 1.2, with final assertions. Row security still limits rows |
+| 3 | The sign-up form accepts names up to 80 characters; the database limit and the trigger cut names at 60 | Low | Fixed in v2.3: the name field stops at 60 characters |
+| 4 | Usernames are not unique, and the page has no availability check | Low | Fixed in rev 1.3 / v2.3: case-insensitive unique index, `is_username_available()` check before sign-up, and `handle_new_user()` keeps the account (empty username) if two people clash at the same moment |
+| 5 | `unlock_signal` contract (parameter name, `success`/`reason`/`message` keys, the value `FREE_LIMIT_REACHED`) is assumed by the page but was never read from the live function | Medium | Step 0 query in HANDOVER prints the definition. Test 4 fails visibly if it is wrong |
+| 6 | README Section 14.4 described v2.1 fonts and features that no longer match the file | Documentation | Section 14.4 marked as superseded; Section 17.4 describes the current page |
+| 7 | "3 free unlocks" is typed into seven places in `index.html` (hero description, sign-up subtitle twice, confirmation sheet, logged-out feed card, and two on the signed-out Account card) and into the `app_settings` description row. The count itself comes from the database (`free_limit`) | Maintenance | If the limit ever changes, update the database function and these strings together |
+
+## 17.4 The frontend as built (v2.2)
+
+**Structure.** One file, no build step. Three tabs: Signals, Premium, Account. Sheets for sign-up/log-in, "Check your email", and the paywall ("Free Unlocks Reached"). Google Fonts (Inter, Plus Jakarta Sans) and `supabase-js` 2.81.1 from jsDelivr are the only external resources. A Content-Security-Policy `<meta>` tag limits scripts to the page and jsDelivr, styles and fonts to Google Fonts, and network calls to the page and the Supabase project URL.
+
+**Signals tab.**
+- Hero: headline and description load from `app_settings` (defaults are in the page). A contained market panel shows an animated candlestick chart, a dotted world map and moving averages. It is **simulated and decorative, not real prices**, and is labelled "XAUUSD market view". It sits inside the hero and scrolls with the page; it no longer fills the screen behind the content.
+- Logged out: "Your first 3 signals are free" card with Create free account and Log in. No signals are requested.
+- Logged in: list from `get_signal_feed`, newest first, up to 50. Locked cards show no trade data, an Unlock signal button and "Uses 1 of your N free unlocks". Unlocked cards show direction, a price rail (spacing proportional to real price distance, entry zone as a gold band, distance in points), confidence meter, reward-to-risk to TP 1, notes, and a Copy signal button. Closed signals show a "Closed" tag.
+- Header badge: Sign in, Free: N left, Free limit reached, Premium, or Admin.
+- Failure states: skeleton while loading, "Could not load signals" with Try again, "No signals published yet", and "Details did not load" on a card whose detail fetch failed.
+
+**Sign-up rules (all checked in the browser before the request).** Full name required (cut at 80 characters). Username 3 to 20 letters, numbers or underscores. Country chosen from Ghana, Nigeria, Kenya, South Africa, United Kingdom, United States, Canada, Other. Phone required: Ghana numbers starting 02 or 05 are accepted as `0241234567`, `241234567`, `+233...`, `00233...` or `233...` and stored as `+233` plus nine digits; other countries need 7 to 18 digits with an optional leading `+`. Password at least 8 characters with a letter and a number. An already-registered email is detected from an empty `identities` list. After 5 failed attempts the form pauses for 30 seconds; this is a convenience, not a security control (Supabase applies its own limits).
+
+**Premium tab.** Plans come from the `PLANS` list in the page: 1 Month (50 GH₵ / $10), 5 Months (170 GH₵ / $35, marked Best value), Lifetime (850 GH₵ / $150). Ghana accounts see GH₵ as the main price and Mobile Money; everyone else sees dollars and USDT. "Save x%" and "about N a month" are calculated from `PLANS` (5 Months shows Save 30%, about GH₵34 or $7 a month; Lifetime shows neither). Continue asks a logged-out user to sign up, otherwise shows a toast that payment opens in the next update. **(This describes v2.2. Payments were added later: see sections 18 to 20.)** An active subscriber sees "Premium is Active" with the plan and expiry.
+
+**Account tab.** Logged out: sign-up and log-in buttons. Logged in: avatar, name, email, plan badge, an upgrade banner for free users, Plan and Expires tiles, free-unlock meter, username, phone, country, SMS status (only when enabled) and Log out. Name, username, phone and country come from `profiles`, falling back to the sign-up metadata if the profile row is missing.
+
+**SMS alerts.** `SMS_ALERTS` is `false`, so SMS notices are hidden. Ghana users are still asked for an SMS-capable number. No server-side SMS exists yet.
+
+**Bottom navigation.** Signals shows a small simulated live candlestick chart; Premium a gold crown with sparkles; Account a robot avatar. Decorative motion stops when the device asks for reduced motion.
+
+**Not in the page.** Admin interface, forgot password, resend confirmation, payment submission, chart images, legal pages.
+
+## 17.5 Decisions still open
+
+See HANDOVER.md, "Decisions I need from you".
+
+---
+
+# 18. Drops 2 to 4 (2 November 2026)
+
+Written on branch `drop2-payments-admin-images`. **Not yet run or deployed.** Deploy order, extra checks and tests 19 to 32 are in `HANDOVER.md`.
+
+| File | Version | What it adds |
+|---|---|---|
+| `pippulse_step2_payments_admin.sql` | rev 2.0 | `plans` table (prices and durations), `audit_log`, `submit_payment`, `my_payments`, `admin_list_payments`, `review_payment` (activates or extends the subscription), `admin_list_audit`, automatic audit triggers on `signals` and `app_settings`, `payments.sender` column |
+| `pippulse_step3_images.sql` | rev 1.0 | Private bucket `signal-images` (2 MB, PNG/JPEG/WebP), four storage policies (admin write; read only if the caller can read the matching signal), `signals_image_path_format` check |
+| `index.html` | v3.0 | Plans read from the database, payment sheet and "Your payments" list, admin dashboard (payments, post signal with optional image, settings, activity), signed image links, forgot password, resend confirmation, legal links and consent line |
+| `legal.html` | draft | Terms of Use, Privacy Policy and Risk Disclosure template. **Not legal advice**; two bracketed items must be filled in and a lawyer should review it |
+| `_headers` | updated | `img-src` now allows the Supabase project (for signed image links) |
+
+Design points:
+- Clients still have no direct access to `payments`, `subscriptions` or `audit_log`; everything goes through functions that check the caller.
+- Prices live in `public.plans`; the page and the server both use it, so they cannot disagree. Lengths of 30 and 150 days are proposed, not yet confirmed.
+- The Mobile Money and USDT details are entered by the admin in the dashboard (stored in `app_settings`, readable by signed-in users only). They are not in the repository.
+- Not done: an integrity hash for `supabase-js` (needs a value computed from the live file; command in HANDOVER), and moving the site into a `public/` folder so documents and SQL are no longer downloadable from the website.
+
+---
+
+# 19. Payment networks (2 November 2026)
+
+Written on branch `all-work`. **Not yet run or deployed.** Steps and tests 33 to 39 are in `HANDOVER.md`.
+
+- `pippulse_step4_payment_networks.sql` (rev 1.0): adds `payments.network` (`mtn`, `telecel`, `at`, `trc20`, `bep20`) with a check that it matches the method, replaces `submit_payment` (now takes `p_network`; refuses a network the admin has not set up), `my_payments` and `admin_list_payments` (now return the network). Run it before deploying the page that sends the network (v3.1 or later).
+- `index.html` v3.1 (the checkout was redesigned again in section 20): payment sheet with method tabs and network choice, per-network details and copy buttons, a warning on crypto payments, and wallet-address format checks when the admin saves settings (TRC20: `T` plus 33 characters; BEP20: `0x` plus 40 hex characters; the checksum cannot be verified in the browser).
+- Settings keys: `momo_<network>_number`, `momo_<network>_name`, `usdt_trc20_address`, `usdt_bep20_address`, `support_contact`. The older single-network keys are no longer used.
+- Wallet addresses and numbers are deliberately not in the repository: they live in `app_settings`, which only an admin can change, so a change to the code cannot silently redirect payments.
+
+---
+
+# 20. Trade results, Paystack and checkout (2 November 2026)
+
+Written on branch `all-work`. **Not yet run or deployed.** Steps and tests 40 to 50 are in `HANDOVER.md`.
+
+- `pippulse_step5_results.sql` (rev 1.0): `signals.result_image_path` (the AFTER picture; `image_path` is the BEFORE picture), `result_note`, `outcome` (`win`, `loss`, `breakeven`), with format checks. No storage policy change: the existing read policy covers every file in the signal's folder.
+- `pippulse_step6_paystack.sql` (rev 1.0): allows payment method `paystack`, adds `payments.channel`, internal `grant_subscription()`, and `activate_paystack_payment()` which only the service role can call.
+- `supabase/functions/paystack-init` and `supabase/functions/paystack-webhook`: Edge Functions (Deno). `paystack-init` creates the Paystack transaction with a server-made reference and the price from `public.plans`. `paystack-webhook` verifies the HMAC-SHA512 signature, re-verifies the transaction with Paystack, then calls `activate_paystack_payment`. Secret: `PAYSTACK_SECRET_KEY` (Supabase secrets only).
+- `index.html` v3.2: the analyst note is shown directly under the signal levels; Before and After pictures side by side with a win, loss or break-even badge and a result note; admin Add result; redesigned checkout (order summary, option cards for Paystack, Mobile Money transfer and USDT, numbered steps for manual payments); return-from-Paystack check that waits for the server to activate the plan.
+- Settings key `paystack_enabled` (`on`) shows the Paystack option to Ghana accounts.
+- Binance (crypto) automation is not built yet: it needs a decision on which Binance product to use.
+
+---
+
+# 21. Deleting an invalid signal (3 November 2026)
+
+Written on branch `all-work`. **Not yet run or deployed.** Steps and tests 51 to 55 are in `HANDOVER.md`.
+
+- `pippulse_step7_delete_signals.sql` (rev 1.0): `admin_delete_signal(uuid, text)`, callable only by `authenticated` and only successful for an admin. It deletes the signal and its `signal_unlocks` rows (refunding free unlocks), writes a snapshot and the reason to the audit log, and returns the picture paths. It works with or without Step 5 (it reads the result picture column through `to_jsonb`).
+- `index.html`: red Delete button on every signal card for admins and in Recent signals; the page asks for a reason, asks for confirmation, calls the function, then removes the pictures from storage with the admin storage policy.
+- Unchanged on purpose: the table policy still only lets an admin delete drafts directly, so the function is the only route for a published signal.
 
 ---
 
