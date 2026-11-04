@@ -355,6 +355,47 @@ input[type=file]{padding:.55rem .7rem}
 .atabs button.on{color:var(--ink);background:var(--gbtn);border:0}
 .row>div{min-width:0}
 .row div b{display:block}
+/* signal note, proof pictures and result */
+.anote{margin:.8rem 0 0;padding:.7rem .85rem;border-radius:.7rem;border-left:3px solid var(--gold);background:rgba(245,192,66,.07)}
+.anote small{display:block;color:var(--gold);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.anote p{margin:.2rem 0 0;color:var(--tx);font-size:.92rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.proofs{display:grid;gap:.6rem;margin-top:.9rem}
+.proofs.two{grid-template-columns:1fr 1fr}
+.proof{margin:0;min-width:0}
+.proof img{display:block;width:100%;height:auto;border-radius:.7rem;border:1px solid var(--line)}
+.proof.af img{border-color:rgba(16,185,129,.45)}
+.proof figcaption{margin-top:.3rem;text-align:center;font-size:.75rem;font-weight:600;color:var(--tx2)}
+.rnote{margin-top:.7rem;padding:.7rem .85rem;border-radius:.7rem;background:var(--s2);border:1px solid var(--line)}
+.rnote p{margin:.35rem 0 0;color:var(--tx2);font-size:.9rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.oc{display:inline-block;padding:.15rem .6rem;border-radius:.4rem;font-size:.75rem;font-weight:700}
+.oc.win{color:var(--grn);background:var(--grn-bg)}
+.oc.loss{color:#FCA5A5;background:var(--red-bg)}
+.oc.be{color:var(--tx2);background:var(--s3)}
+/* checkout */
+.ordr{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.9rem 0 1rem;padding:1rem 1.1rem;border-radius:1rem;border:1px solid rgba(245,192,66,.3);background:linear-gradient(135deg,rgba(245,192,66,.12),rgba(245,192,66,.02))}
+.ordr b{display:block;font:700 1.1rem var(--fd)}
+.ordr small{color:var(--tx2);font-size:.82rem}
+.ordp{font:800 1.7rem var(--fd);color:var(--gold);letter-spacing:-.02em;white-space:nowrap}
+.opts{display:grid;gap:.7rem;margin:.4rem 0 .6rem}
+.opt{display:grid;grid-template-columns:auto 1fr auto;gap:.85rem;align-items:center;width:100%;text-align:left;padding:.95rem 1rem;border-radius:1rem;border:1px solid var(--line2);background:var(--s2);color:inherit;font:inherit;cursor:pointer;transition:border-color .2s,background .2s,transform .15s}
+.opt:hover{border-color:var(--gold);background:var(--s3)}
+.opt:active{transform:scale(.985)}
+.opt:disabled{opacity:.5;cursor:wait}
+.opt .oi{width:2.6rem;height:2.6rem;border-radius:.8rem;display:grid;place-items:center;background:var(--gold-glow);color:var(--gold)}
+.opt .oi svg{width:1.4rem;height:1.4rem}
+.opt b{display:block;font:700 1rem var(--fd)}
+.opt small{display:block;color:var(--tx2);font-size:.8rem;line-height:1.35;margin-top:.1rem}
+.opt .ob{font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:.4rem;color:var(--grn);background:var(--grn-bg);white-space:nowrap}
+.opt .ob.m{color:#FDE68A;background:rgba(245,192,66,.12)}
+.steps{counter-reset:s;margin:1rem 0 .4rem;padding:0;list-style:none;display:grid;gap:1.1rem}
+.steps li{position:relative;padding-left:2.3rem}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:.05rem;width:1.5rem;height:1.5rem;border-radius:50%;display:grid;place-items:center;font:700 .8rem var(--fd);color:var(--ink);background:var(--gbtn)}
+.steps li>b{display:block;font:700 1rem var(--fd)}
+.lbl{margin:.6rem 0 .3rem;font-size:.78rem;font-weight:600;color:var(--tx2)}
+.addr{display:flex;align-items:center;gap:.6rem;padding:.7rem .8rem;border-radius:.8rem;background:var(--bg);border:1px solid var(--line2);font:600 .85rem ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.addr span{flex:1;min-width:0}
+.rowbtns{display:flex;gap:.4rem;flex:none}
+.foot{gap:.5rem}
 </style>
 </head>
 <body>
@@ -476,6 +517,21 @@ input[type=file]{padding:.55rem .7rem}
   <p class="mut">Upgrade to PipPulse Gold Premium to keep unlocking every XAUUSD signal.</p>
   <button class="btn gold" onclick="closeSheet('paywall');show('plans')">View Premium Plans</button>
   <button class="btn" onclick="closeSheet('paywall')">Not now</button>
+</div></div>
+
+<div class='sheet' id='s-result' role='dialog' aria-modal='true' aria-labelledby='res-title'><div class='box'>
+  <div class='grab'></div>
+  <h3 id='res-title'>Trade result</h3>
+  <p class='mut' style='margin:0'>Show customers how the trade ended. Saving closes the signal.</p>
+  <label for='res-out'>Outcome</label>
+  <select id='res-out'><option value=''>Choose</option><option value='win'>Win (take profit hit)</option><option value='loss'>Loss (stop loss hit)</option><option value='breakeven'>Break-even</option></select>
+  <label for='res-note'>Result note (optional)</label>
+  <textarea id='res-note' maxlength='1000' placeholder='TP2 hit, +120 pips'></textarea>
+  <label for='res-img'>After picture: result screenshot (optional, PNG, JPG or WebP, up to 2 MB)</label>
+  <input id='res-img' type='file' accept='image/png,image/jpeg,image/webp'>
+  <p class='err' id='res-err' role='alert' hidden></p>
+  <button class='btn gold' data-act='resSave'>Save result</button>
+  <button class='btn' data-act='closeSheet' data-id='result'>Cancel</button>
 </div></div>
 
 <div class='sheet' id='s-pay' role='dialog' aria-modal='true'><div class='box'><div class='grab'></div><div id='pay-body'></div></div></div>
@@ -696,11 +752,15 @@ async function loadSignals(){
   const ids=feed.filter(x=>x.unlocked).map(x=>x.id);
   const det={};
   if(ids.length){
-    const{data,error:e2}=await sb.from('signals').select('id,direction,entry_low,entry_high,stop_loss,take_profits,confidence,notes,image_path').in('id',ids);
+    const BASE='id,direction,entry_low,entry_high,stop_loss,take_profits,confidence,notes,image_path';
+    let q=await sb.from('signals').select(BASE+',result_image_path,result_note,outcome').in('id',ids);
+    if(q.error)q=await sb.from('signals').select(BASE).in('id',ids); /* older database without the result columns */
+    const{data,error:e2}=q;
     if(e2)S.error=friendly(e2);
     (data||[]).forEach(d=>det[d.id]=d);
     /* Chart images live in a private bucket: ask for a short-lived signed link (the database decides who may) */
-    await Promise.all(Object.values(det).filter(d=>d.image_path).map(async d=>{try{const{data:u,error:ie}=await sb.storage.from('signal-images').createSignedUrl(d.image_path,3600);if(!ie&&u)d.img_url=u.signedUrl}catch(_){}}));
+    const sign=async path=>{try{const{data:u,error:ie}=await sb.storage.from('signal-images').createSignedUrl(path,3600);return(!ie&&u)?u.signedUrl:null}catch(_){return null}};
+    await Promise.all(Object.values(det).map(async d=>{if(d.image_path)d.img_url=await sign(d.image_path);if(d.result_image_path)d.res_url=await sign(d.result_image_path)}));
   }
   S.signals=feed.map(x=>({...x,...(det[x.id]||{})})).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at));
 }
@@ -725,6 +785,15 @@ function rail(s){
     pts.map(p=>`<g class="lv ${p.k}" style="--i:${idx.get(p)}"><path class="ld" pathLength="1" d="M${p.k==='en'?85:82} ${p.y.toFixed(1)}L92 ${p.y.toFixed(1)}L98 ${p.ly.toFixed(1)}"/>${p.k==='en'?'':`<circle cx="78" cy="${p.y.toFixed(1)}" r="4"/>`}<text class="nm" x="0" y="${(p.ly+4).toFixed(1)}">${p.n}</text><text class="pr" x="104" y="${(p.ly+5.5).toFixed(1)}">${p.t}</text>${p.k==='en'?'':`<text class="d" x="340" y="${(p.ly+4).toFixed(1)}" text-anchor="end">${f2(Math.abs(p.v-mid))} pts</text>`}</g>`).join('')+'</svg>';
 }
 function rr(s){const mid=(+s.entry_low+ +s.entry_high)/2,t=(s.take_profits||[])[0],risk=Math.abs(mid-+s.stop_loss);return(t==null||!risk)?null:Math.abs(+t-mid)/risk}
+/* Proof pictures: BEFORE is posted with the signal, AFTER is added when the trade ends */
+function proofImg(url,label,cls){return `<figure class='proof ${cls}'><a href='${esc(url)}' target='_blank' rel='noopener noreferrer'><img src='${esc(url)}' alt='${esc(label)}' loading='lazy' referrerpolicy='no-referrer'></a><figcaption>${esc(label)}</figcaption></figure>`}
+function proofs(s){
+  const OUT={win:['Win','win'],loss:['Loss','loss'],breakeven:['Break-even','be']},o=OUT[s.outcome];
+  const before=s.img_url?proofImg(s.img_url,'Before: entry chart','bf'):'',after=s.res_url?proofImg(s.res_url,'After: result','af'):'';
+  const res=(s.result_note||o)?`<div class='rnote'>${o?`<span class='oc ${o[1]}'>${o[0]}</span>`:''}${s.result_note?`<p>${esc(s.result_note)}</p>`:''}</div>`:'';
+  if(!before&&!after&&!res)return '';
+  return `<div class='proofs${before&&after?' two':''}'>${before}${after}</div>${res}`;
+}
 const kk=s=>s.id+(s.unlocked?'u':'l');
 function sigCard(s,n){
   const when=new Date(s.published_at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'});
@@ -741,10 +810,11 @@ function sigCard(s,n){
   return `<article class="sig ${cls}" ${st}><div class="sh"><div><b>XAUUSD ${buy?'Buy':'Sell'}</b><small>${esc(when)}</small></div>
     <span class="dir ${closed?'mute':buy?'buy':'sell'}">${closed?'Closed':(buy?UP+'Buy':DOWN+'Sell')}</span></div>
     ${rail(s)}
+    ${s.notes?`<div class='anote'><small>Analyst note</small><p>${esc(s.notes)}</p></div>`:''}
     <dl class="stats"><div><dt>Confidence</dt><dd>${Number.isFinite(c)?c+'%':'-'}</dd>${Number.isFinite(c)?`<span class="meter"><i style="width:${c}%"></i></span>`:''}</div>
     <div><dt>Reward to risk (TP 1)</dt><dd>${r?f2(r)+' : 1':'-'}</dd></div></dl>
-    ${s.img_url?`<a class='chartimg' href='${esc(s.img_url)}' target='_blank' rel='noopener noreferrer'><img src='${esc(s.img_url)}' alt='Signal chart' loading='lazy' referrerpolicy='no-referrer'></a>`:''}${s.notes?`<p class="notes">${esc(s.notes)}</p>`:''}
-    <div class="foot"><button class="btn" data-copy="${esc(s.id)}">Copy signal</button></div></article>`;
+    ${proofs(s)}
+    <div class="foot">${S.access&&S.access.is_admin?`<button class="btn out" data-act="sigDelete" data-id="${esc(s.id)}">Delete</button>`:''}<button class="btn" data-copy="${esc(s.id)}">Copy signal</button></div></article>`;
 }
 function watch(root){
   const els=root.querySelectorAll('.sig.enter:not(.in)');
@@ -963,7 +1033,7 @@ async function loadPayments(){try{const{data,error}=await sb.rpc('my_payments');
 const MOMO_NETS=[['mtn','MTN Mobile Money'],['telecel','Telecel Cash'],['at','AT Money']];
 const USDT_NETS=[['trc20','USDT on TRC20 (TRON)'],['bep20','USDT on BEP20 (BNB Smart Chain)']];
 const NETLAB={mtn:'MTN MoMo',telecel:'Telecel Cash',at:'AT Money',trc20:'USDT TRC20',bep20:'USDT BEP20'};
-const PAYKEYS=['support_contact'].concat(MOMO_NETS.map(n=>'momo_'+n[0]+'_number'),MOMO_NETS.map(n=>'momo_'+n[0]+'_name'),USDT_NETS.map(n=>'usdt_'+n[0]+'_address'));
+const PAYKEYS=['support_contact','paystack_enabled'].concat(MOMO_NETS.map(n=>'momo_'+n[0]+'_number'),MOMO_NETS.map(n=>'momo_'+n[0]+'_name'),USDT_NETS.map(n=>'usdt_'+n[0]+'_address'));
 /* Ghana accounts can pay by Mobile Money or USDT; everyone else pays in USDT. A network is offered only when the admin has entered its number or address. */
 function payMethods(){return S.profile&&S.profile.country==='Ghana'?['momo','usdt']:['usdt']}
 function payNets(m){const d=S.pay||{};return m==='momo'?MOMO_NETS.filter(n=>d['momo_'+n[0]+'_number']):USDT_NETS.filter(n=>d['usdt_'+n[0]+'_address'])}
@@ -973,33 +1043,82 @@ async function loadPaySettings(){try{const{data}=await sb.from('app_settings').s
 /* The payment method and network are chosen inside the payment sheet (S.payMethod and S.payNet) */
 async function openPay(id){
   if(!PLANS.find(x=>x.id===id))return;
-  S.payPlan=id;$('pay-body').innerHTML=`<h3>Payment details</h3><p class='mut'>Loading…</p>`;openSheet('pay');
+  S.payPlan=id;S.payStep='choose';$('pay-body').innerHTML=`<h3>Checkout</h3><p class='mut'>Loading…</p>`;openSheet('pay');
   await loadPaySettings();
   const ms=payMethods();S.payMethod=ms.find(x=>payNets(x).length)||ms[0];S.payNet=(payNets(S.payMethod)[0]||[null])[0];
   renderPay();
 }
+const IC_PH=`<svg class='i' viewBox='0 0 24 24'><rect x='7' y='2' width='10' height='20' rx='2'/><path d='M11 18h2'/></svg>`;
+const IC_COIN=`<svg class='i' viewBox='0 0 24 24'><circle cx='12' cy='12' r='9'/><path d='M9 8h4.5a2 2 0 0 1 0 4H9m0-4v8m0-4h5a2 2 0 0 1 0 4H9'/></svg>`;
 function renderPay(){
   const p=PLANS.find(x=>x.id===S.payPlan);if(!p)return;
-  const d=S.pay||{},ms=payMethods(),m=ms.includes(S.payMethod)?S.payMethod:ms[0],momo=m==='momo',amt=momo?'GH₵'+p.ghs:'$'+p.usd,nets=payNets(m),net=nets.find(n=>n[0]===S.payNet)||nets[0]||null;
+  const d=S.pay||{},gh=payMethods().includes('momo');
+  const price=gh?'GH₵'+p.ghs:'$'+p.usd;
+  const dur=p.id==='lifetime'?'Lifetime access':p.months+(p.months>1?' months':' month')+' of access';
+  const head=`<h3>Checkout</h3><div class='ordr'><div><b>${esc(p.label)}</b><small>${esc(dur)}</small></div><div class='ordp'>${esc(price)}</div></div>`;
+
+  /* Step 1: choose how to pay */
+  if(S.payStep!=='manual'){
+    const hasPs=gh&&d.paystack_enabled==='on',hasMomo=gh&&payNets('momo').length>0,hasUsdt=payNets('usdt').length>0,opts=[];
+    if(hasPs)opts.push(`<button class='opt' data-act='payPaystack'><span class='oi'>${IC_PH}</span><span><b>Mobile Money or card</b><small>Pay securely online with Paystack: MTN, Telecel, AT Money or card. Your plan activates automatically.</small></span><span class='ob'>Instant</span></button>`);
+    if(hasMomo)opts.push(`<button class='opt' data-act='payOpen' data-id='momo'><span class='oi'>${IC_PH}</span><span><b>Mobile Money transfer</b><small>Send to our MTN, Telecel or AT number, then enter your transaction ID.</small></span><span class='ob m'>We confirm</span></button>`);
+    if(hasUsdt)opts.push(`<button class='opt' data-act='payOpen' data-id='usdt'><span class='oi'>${IC_COIN}</span><span><b>USDT (crypto)</b><small>Send USDT on TRC20 or BEP20, then enter your transaction hash.</small></span><span class='ob m'>We confirm</span></button>`);
+    $('pay-body').innerHTML=head+(opts.length?`<p class='lbl'>Choose how you want to pay</p><div class='opts'>${opts.join('')}</div>`:`<div class='note'>Payment options have not been set up yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`)+`<button class='btn' data-act='closeSheet' data-id='pay'>Close</button><p class='hint'>Never share your password with anyone. We will never ask for it.</p>`;
+    return;
+  }
+
+  /* Step 2: manual payment (Mobile Money transfer or USDT) */
+  const m=S.payMethod==='usdt'?'usdt':'momo',momo=m==='momo',amt=momo?'GH₵'+p.ghs:'$'+p.usd,nets=payNets(m),net=nets.find(n=>n[0]===S.payNet)||nets[0]||null;
   S.payMethod=m;S.payNet=net?net[0]:null;
-  const rows=!net?[]:momo?[['Network',net[1]],['Number',d['momo_'+net[0]+'_number'],1],['Account name',d['momo_'+net[0]+'_name']]]:[['Network',net[1]],['Wallet address',d['usdt_'+net[0]+'_address'],1]];
-  const ready=!!net&&rows.every(r=>r[1]);
   const keepRef=($('p-ref')||{}).value||'',keepSender=($('p-sender')||{}).value||'';
-  const methodTabs=ms.length>1?`<div class='atabs'>${ms.map(x=>`<button data-act='payMethod' data-id='${x}' class='${x===m?'on':''}'>${x==='momo'?'Mobile Money':'USDT (crypto)'}</button>`).join('')}</div>`:'';
   const netTabs=nets.length>1?`<div class='atabs'>${nets.map(n=>`<button data-act='payNet' data-id='${n[0]}' class='${net&&n[0]===net[0]?'on':''}'>${esc(n[1])}</button>`).join('')}</div>`:'';
-  const list=rows.filter(r=>r[1]).map(r=>`<div class='row'><span>${esc(r[0])}</span><b style='overflow-wrap:anywhere'>${esc(r[1])}</b>${r[2]?`<button class='btn mini' data-copytext='${esc(r[1])}'>Copy</button>`:''}</div>`).join('');
-  $('pay-body').innerHTML=`<h3>Pay for ${esc(p.label)}</h3>
-   <p class='mut' style='margin:0'>Send exactly <b>${esc(amt)}</b>${momo?' by Mobile Money':' in USDT'}, then enter the payment reference below.</p>
-   ${methodTabs}${netTabs}
-   ${ready?`<div class='card rows' style='margin-top:.9rem'>${list}</div>${momo?'':`<div class='note'>Send only <b>USDT</b> on the <b>${esc(net[1])}</b> network to this address. Any other coin or network will be lost and cannot be recovered. You pay the network fee, so make sure the full amount arrives.</div>`}`:`<div class='note'>Payment details have not been added yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`}
-   <label for='p-ref'>${momo?'Mobile Money transaction ID':'USDT transaction hash'}</label>
-   <input id='p-ref' maxlength='150' autocomplete='off' autocapitalize='none' spellcheck='false' value='${esc(keepRef)}'>
-   <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet (optional)'}</label>
-   <input id='p-sender' maxlength='60' autocomplete='off' value='${esc(keepSender)}'>
-   <p class='err' id='p-err' role='alert' hidden></p>
-   <button class='btn gold' data-act='paySubmit'${ready?'':' disabled'}>I have paid, submit</button>
-   <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>
-   <p class='hint'>Your plan activates after an administrator confirms the payment. Never share your password with anyone.</p>`;
+  const addr=(v,label)=>`<p class='lbl'>${esc(label)}</p><div class='addr'><span>${esc(v)}</span><button class='btn mini' data-copytext='${esc(v)}'>Copy</button></div>`;
+  let details=`<p class='hint'>This option is not set up yet.</p>`;
+  if(net){
+    details=momo
+      ?addr(d['momo_'+net[0]+'_number'],net[1]+' number')+(d['momo_'+net[0]+'_name']?`<p class='hint'>Account name: <b>${esc(d['momo_'+net[0]+'_name'])}</b></p>`:'')
+      :addr(d['usdt_'+net[0]+'_address'],'Send USDT to this '+net[1]+' address')+`<div class='note'>Send only <b>USDT</b> on the <b>${esc(net[1])}</b> network. Any other coin or network will be lost and cannot be recovered. You pay the network fee, so make sure the full amount arrives.</div>`;
+  }
+  $('pay-body').innerHTML=`<button class='btn mini' data-act='payBack'>&lsaquo; Back</button>${head}${netTabs}
+   <ol class='steps'>
+    <li><b>Send exactly ${esc(amt)}</b>${details}</li>
+    <li><b>Enter your payment reference</b>
+     <label for='p-ref'>${momo?'Mobile Money transaction ID':'USDT transaction hash'}</label>
+     <input id='p-ref' maxlength='150' autocomplete='off' autocapitalize='none' spellcheck='false' value='${esc(keepRef)}'>
+     <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet (optional)'}</label>
+     <input id='p-sender' maxlength='60' autocomplete='off' value='${esc(keepSender)}'>
+     <p class='err' id='p-err' role='alert' hidden></p></li>
+    <li><b>We confirm and activate</b><small class='pn'>An administrator checks your payment and activates your plan.</small></li>
+   </ol>
+   <button class='btn gold' data-act='paySubmit'${net?'':' disabled'}>I have paid, submit</button>
+   <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>`;
+}
+ACT.payOpen=id=>{S.payStep='manual';S.payMethod=id;S.payNet=null;renderPay()};
+ACT.payBack=()=>{S.payStep='choose';renderPay()};
+/* Paystack: the server starts the payment and decides the amount; this page only sends the plan and follows the link */
+ACT.payPaystack=async(_,btn)=>{
+  btn.disabled=true;
+  try{
+    const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan}});
+    if(error||!data||!data.url)throw new Error('start');
+    const u=new URL(data.url);
+    if(u.protocol!=='https:'||!(u.hostname==='checkout.paystack.com'||u.hostname.endsWith('.paystack.com')))throw new Error('host');
+    location.href=u.href;
+  }catch(e){toast('Could not start the online payment. Try again or choose another option.');btn.disabled=false}
+};
+/* Back from Paystack: the plan is activated by the server when Paystack confirms, so wait and check */
+async function checkReturn(){
+  const q=new URLSearchParams(location.search),ref=q.get('reference')||q.get('trxref');
+  if(!ref||!/^pp_[0-9a-f]{32}$/.test(ref))return;
+  history.replaceState(null,'',location.pathname);
+  toast('Confirming your payment…');
+  for(let i=0;i<10;i++){
+    await new Promise(r=>setTimeout(r,4000));
+    await refresh();await loadPayments();
+    /* confirm by this payment's own reference, so people who are already Premium are not told 'confirmed' too early */
+    if((S.payments||[]).some(x=>x.reference===ref&&x.status==='activated')){render();toast('Payment confirmed. Your plan is active.');show('account');return}
+  }
+  toast('Your payment is still being confirmed. It will appear on your account shortly.');
 }
 ACT.paySubmit=async(_,btn)=>{
   const ref=$('p-ref').value.trim(),sender=$('p-sender').value.trim(),err=$('p-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
@@ -1018,7 +1137,7 @@ ACT.paySubmit=async(_,btn)=>{
 function payList(){
   const L=S.payments||[];if(!L.length)return '';
   const lab={pending:'Awaiting review',activated:'Activated',rejected:'Rejected'};
-  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
+  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}${x.payment_method==='paystack'?' · Paystack':''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
 }
 
 /* --- Admin dashboard (the page only shows it; the database enforces who may use it) --- */
@@ -1061,7 +1180,7 @@ function adminPayHtml(){
     return `<div class='card'><div class='uh'><span>${who}</span><b>${cur}${esc(x.amount)}</b></div>
     <p class='hint'>${esc([x.email,x.phone,x.country].filter(Boolean).join(' · '))}</p>
     <div class='row'><span>Plan</span><b>${esc(pl)}</b></div>
-    <div class='row'><span>Method</span><b>${x.payment_method==='momo'?'Mobile Money':'USDT'}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}</b></div>
+    <div class='row'><span>Method</span><b>${esc(({momo:'Mobile Money',usdt:'USDT',paystack:'Paystack'})[x.payment_method]||x.payment_method)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}${x.channel?' · '+esc(x.channel):''}</b></div>
     <div class='row'><span>Reference</span><b style='overflow-wrap:anywhere'>${esc(x.reference)}</b></div>
     ${x.sender?`<div class='row'><span>Paid from</span><b style='overflow-wrap:anywhere'>${esc(x.sender)}</b></div>`:''}
     <div class='row'><span>Submitted</span><b>${esc(new Date(x.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))}</b></div>
@@ -1083,15 +1202,15 @@ ACT.payApprove=(id,b)=>reviewPay(id,true,b);
 ACT.payReject=(id,b)=>reviewPay(id,false,b);
 
 function adminPostHtml(){
-  const recent=S.signals.slice(0,8).map(s=>`<div class='row'><div><b>XAUUSD ${esc(s.direction||'')}</b><small class='pn'>${esc(new Date(s.published_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))} · ${esc(s.status)}</small></div>${s.status==='published'?`<button class='btn mini' data-act='sigClose' data-id='${esc(s.id)}'>Close</button>`:`<span>Closed</span>`}</div>`).join('');
+  const recent=S.signals.slice(0,15).map(s=>`<div class='row'><div><b>XAUUSD ${esc(s.direction||'')}</b><small class='pn'>${esc(new Date(s.published_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))} · ${esc(s.status)}</small></div><span class='rowbtns'><button class='btn mini' data-act='resOpen' data-id='${esc(s.id)}'>${s.outcome||s.result_note||s.res_url?'Edit result':s.status==='closed'?'Add result':'Add result and close'}</button><button class='btn mini out' data-act='sigDelete' data-id='${esc(s.id)}'>Delete</button></span></div>`).join('');
   return `<div class='card'><h3>Post a signal</h3>
   <label for='s-dir'>Direction</label><select id='s-dir'><option>BUY</option><option>SELL</option></select>
   <div class='two'><div><label for='s-lo'>Entry low</label><input id='s-lo' inputmode='decimal'></div><div><label for='s-hi'>Entry high</label><input id='s-hi' inputmode='decimal' placeholder='Same as low'></div></div>
   <label for='s-sl'>Stop loss</label><input id='s-sl' inputmode='decimal'>
   <label for='s-tp'>Take profits (comma separated)</label><input id='s-tp' placeholder='2410, 2418, 2430'>
   <label for='s-conf'>Confidence (0 to 100, optional)</label><input id='s-conf' inputmode='numeric'>
-  <label for='s-notes'>Notes (optional)</label><textarea id='s-notes' maxlength='2000'></textarea>
-  <label for='s-img'>Chart image (optional, PNG, JPG or WebP, up to 2 MB)</label><input id='s-img' type='file' accept='image/png,image/jpeg,image/webp'>
+  <label for='s-notes'>Note shown directly under the signal (optional)</label><textarea id='s-notes' maxlength='2000'></textarea>
+  <label for='s-img'>Before picture: your entry screenshot (optional, PNG, JPG or WebP, up to 2 MB)</label><input id='s-img' type='file' accept='image/png,image/jpeg,image/webp'>
   <p class='err' id='s-err' role='alert' hidden></p>
   <button class='btn gold' data-act='sigPublish'>Publish signal</button></div>
   <div class='card'><div class='uh'><span>Recent signals</span></div>${recent||`<p class='hint'>No signals yet.</p>`}</div>`;
@@ -1110,7 +1229,7 @@ ACT.sigPublish=async(_,btn)=>{
   if(conf!==null&&!(Number.isInteger(conf)&&conf>=0&&conf<=100))return fail('Confidence must be a whole number from 0 to 100.');
   if(notes.length>2000)return fail('Notes are limited to 2000 characters.');
   if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2097152))return fail('The chart image must be PNG, JPG or WebP, up to 2 MB.');
-  if(!confirm('Publish this '+dir+' signal now? Published signals cannot be deleted.'))return;
+  if(!confirm('Publish this '+dir+' signal now? If it turns out to be invalid you can delete it later from Recent signals.'))return;
   btn.disabled=true;
   try{
     const{data:row,error}=await sb.from('signals').insert({symbol:'XAUUSD',direction:dir,entry_low:lo,entry_high:hi,stop_loss:sl,take_profits:tps,confidence:conf,notes:notes||null,status:'published',published_at:new Date().toISOString(),created_by:S.user.id}).select('id').single();
@@ -1127,6 +1246,51 @@ ACT.sigPublish=async(_,btn)=>{
   }catch(e){fail('Could not publish: '+((e&&e.message)||'error'))}
   finally{btn.disabled=false}
 };
+ACT.resOpen=id=>{
+  const s=S.signals.find(x=>x.id===id);if(!s)return;
+  S.resId=id;$('res-out').value=s.outcome||'';$('res-note').value=s.result_note||'';$('res-img').value='';$('res-err').hidden=true;openSheet('result');
+};
+ACT.resSave=async(_,btn)=>{
+  const err=$('res-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
+  const out=$('res-out').value,note=$('res-note').value.trim(),file=$('res-img').files[0],id=S.resId;
+  if(!id)return;
+  if(!out&&!note&&!file)return fail('Choose an outcome, write a note or add a picture.');
+  if(note.length>1000)return fail('The note is limited to 1000 characters.');
+  if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2097152))return fail('The picture must be PNG, JPG or WebP, up to 2 MB.');
+  btn.disabled=true;
+  try{
+    const patch={status:'closed',outcome:out||null,result_note:note||null}; /* an emptied field clears the old value */
+    if(file){
+      const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type],path=id+'/'+crypto.randomUUID()+'.'+ext;
+      const up=await sb.storage.from('signal-images').upload(path,file,{contentType:file.type,upsert:false});
+      if(up.error)throw up.error;
+      patch.result_image_path=path;
+    }
+    const{error}=await sb.from('signals').update(patch).eq('id',id);
+    if(error)throw error;
+    closeSheet('result');toast('Result saved. The signal is closed.');await refresh();renderAdmin();
+  }catch(e){fail('Could not save: '+((e&&e.message)||'error'))}
+  finally{btn.disabled=false}
+};
+/* Delete an invalid signal. Only the database function can do it, and only for an admin. */
+ACT.sigDelete=async(id,btn)=>{
+  const s=S.signals.find(x=>x.id===id);if(!s)return;
+  const reason=prompt('Why is this signal being deleted? The reason is saved in the activity log. You can leave it empty. Press Cancel to keep the signal.');
+  if(reason===null)return;
+  if(!confirm('Delete this '+(s.direction||'')+' signal permanently? Customers will no longer see it, its pictures are removed, and anyone who used a free unlock on it gets that unlock back. This cannot be undone.'))return;
+  btn.disabled=true;
+  try{
+    const{data,error}=await sb.rpc('admin_delete_signal',{p_signal_id:id,p_reason:reason.trim()||null});
+    if(error){
+      if(/could not find|PGRST202|42883/i.test(String(error.code+' '+error.message)))throw new Error('Delete is not installed yet. Run pippulse_step7_delete_signals.sql in Supabase.');
+      throw error;
+    }
+    if(!data||!data.success)throw new Error((data&&data.message)||'Could not delete the signal.');
+    const paths=data.image_paths||[];
+    if(paths.length){try{await sb.storage.from('signal-images').remove(paths)}catch(_){}}
+    toast('Signal deleted.');await refresh();renderAdmin();
+  }catch(e){toast('Could not delete: '+((e&&e.message)||'error'));btn.disabled=false}
+};
 ACT.sigClose=async(id,btn)=>{
   if(!confirm('Mark this signal as closed?'))return;
   btn.disabled=true;
@@ -1134,7 +1298,7 @@ ACT.sigClose=async(id,btn)=>{
   catch(e){toast('Could not close: '+((e&&e.message)||'error'))}finally{btn.disabled=false}
 };
 
-const SETF=[['headline','Homepage headline',1],['description','Homepage description',1],['momo_mtn_number','MTN Mobile Money number',0],['momo_mtn_name','MTN account name',0],['momo_telecel_number','Telecel Cash number',0],['momo_telecel_name','Telecel account name',0],['momo_at_number','AT Money number',0],['momo_at_name','AT account name',0],['usdt_trc20_address','USDT wallet address on TRC20 (starts with T)',0],['usdt_bep20_address','USDT wallet address on BEP20 (starts with 0x)',0],['support_contact','Support contact shown to users',0]];
+const SETF=[['headline','Homepage headline',1],['description','Homepage description',1],['momo_mtn_number','MTN Mobile Money number',0],['momo_mtn_name','MTN account name',0],['momo_telecel_number','Telecel Cash number',0],['momo_telecel_name','Telecel account name',0],['momo_at_number','AT Money number',0],['momo_at_name','AT account name',0],['usdt_trc20_address','USDT wallet address on TRC20 (starts with T)',0],['usdt_bep20_address','USDT wallet address on BEP20 (starts with 0x)',0],['paystack_enabled','Paystack online payments: type on to turn them on',0],['support_contact','Support contact shown to users',0]];
 function adminSettingsHtml(){
   const v=S.admin.settings;
   return `<div class='card'><h3>Settings</h3><p class='hint'>Payment details are shown to signed-in users when they pay. Leave a network empty to hide it. Copy wallet addresses straight from your wallet and double-check every character. The TRC20 and BEP20 addresses are different addresses on different networks: never use one in place of the other.</p>
@@ -1171,7 +1335,7 @@ sb.auth.onAuthStateChange((ev,session)=>{
   if(ev==='SIGNED_IN'&&S.user&&session&&session.user.id===S.user.id)return;
   setTimeout(refresh,0);
 });
-setHL($('hl').textContent);loadSettings();loadPlans();refresh();
+setHL($('hl').textContent);loadSettings();loadPlans();refresh();checkReturn();
 </script>
 </body>
 </html>
