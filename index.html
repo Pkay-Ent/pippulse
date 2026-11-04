@@ -1143,7 +1143,9 @@ ACT.paystackMomoStart=async(_,btn)=>{
     const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'momo',provider,phone}});
     if(error||!data||data.method!=='momo'||!data.reference)throw new Error('start');
     const msg=data.message||'A payment request has been sent. Check your phone and approve the prompt to complete payment.';
-    $('pay-body').innerHTML=`${head}<div class='active-b' style='color:var(--gold);border-color:rgba(245,192,66,.3);background:var(--gold-glow)'>Payment request sent<small>${esc(msg)}</small></div>
+    const plan=PLANS.find(x=>x.id===S.payPlan);
+    const orderHead=plan?`<h3>Checkout</h3><div class='ordr'><div><b>${esc(plan.label)}</b><small>${esc(plan.id==='lifetime'?'Lifetime access':plan.months+(plan.months>1?' months':' month')+' of access')}</small></div><div class='ordp'>${esc(payMethods().includes('momo')?'GH₵'+plan.ghs:'$'+plan.usd)}</div></div>`:'<h3>Checkout</h3>';
+    $('pay-body').innerHTML=`${orderHead}<div class='active-b' style='color:var(--gold);border-color:rgba(245,192,66,.3);background:var(--gold-glow)'>Payment request sent<small>${esc(msg)}</small></div>
       <ol class='steps'><li><b>Check your phone</b><small class='pn'>Approve the Paystack payment prompt on your Mobile Money phone. Complete any PIN or confirmation step requested by your network.</small></li>
       <li><b>Keep this page open briefly</b><small class='pn'>Your premium access activates automatically after Paystack confirms the payment. Reference: ${esc(data.reference)}</small></li></ol>
       <p class='hint' id='ps-status'>Waiting for payment confirmation…</p>
