@@ -1059,7 +1059,9 @@ function renderPay(){
 
   /* Step 1: choose how to pay */
   if(S.payStep==='paystack_momo'){
-    const profilePhone=(S.profile&&S.profile.phone)||'';
+    const savedPhone=(S.profile&&S.profile.phone)||'';
+    const profilePhone=(S.profile&&S.profile.country==='Ghana'&&savedPhone.startsWith('+233'))
+      ?'0'+savedPhone.slice(4):savedPhone;
     $('pay-body').innerHTML=`<button class='btn mini' data-act='payBack'>&lsaquo; Back</button>${head}
       <p class='lbl'>Mobile network</p>
       <select id='ps-provider' aria-label='Mobile network'>
@@ -1079,7 +1081,6 @@ function renderPay(){
     const hasPs=gh&&d.paystack_enabled==='on',hasMomo=gh&&payNets('momo').length>0,hasUsdt=payNets('usdt').length>0,opts=[];
     if(hasPs){
       opts.push(`<button class='opt' data-act='paystackMomoOpen'><span class='oi'>${IC_PH}</span><span><b>Mobile Money</b><small>Pay with MTN, Telecel or AT Money. Receive a payment prompt on your phone.</small></span><span class='ob'>Instant</span></button>`);
-      opts.push(`<button class='opt' data-act='paystackCard'><span class='oi'>${IC_COIN}</span><span><b>Debit or credit card</b><small>Pay securely by card through Paystack.</small></span><span class='ob'>Instant</span></button>`);
     }
     if(hasMomo)opts.push(`<button class='opt' data-act='payOpen' data-id='momo'><span class='oi'>${IC_PH}</span><span><b>Mobile Money transfer</b><small>Send to our MTN, Telecel or AT number, then enter your transaction ID.</small></span><span class='ob m'>We confirm</span></button>`);
     if(hasUsdt)opts.push(`<button class='opt' data-act='payOpen' data-id='usdt'><span class='oi'>${IC_COIN}</span><span><b>USDT (crypto)</b><small>Send USDT on TRC20 or BEP20, then enter your transaction hash.</small></span><span class='ob m'>We confirm</span></button>`);
@@ -1115,18 +1116,6 @@ function renderPay(){
 }
 ACT.payOpen=id=>{S.payStep='manual';S.payMethod=id;S.payNet=null;renderPay()};
 ACT.payBack=()=>{S.payStep='choose';renderPay()};
-/* Paystack card checkout: the server calculates the amount and returns a hosted checkout URL. */
-ACT.paystackCard=async(_,btn)=>{
-  btn.disabled=true;
-  try{
-    const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'card'}});
-    if(error||!data||!data.url)throw new Error('start');
-    const u=new URL(data.url);
-    if(u.protocol!=='https:'||!(u.hostname==='checkout.paystack.com'||u.hostname.endsWith('.paystack.com')))throw new Error('host');
-    location.href=u.href;
-  }catch(e){toast('Could not start card payment. Try again or choose another option.');btn.disabled=false}
-};
-
 /* Paystack direct Mobile Money charge. Provider codes are Paystack's Ghana codes:
    MTN=mtn, Telecel=vod, AT Money=atl. Amount is always read server-side. */
 ACT.paystackMomoOpen=()=>{S.payStep='paystack_momo';renderPay()};
@@ -1137,10 +1126,11 @@ ACT.paystackMomoStart=async(_,btn)=>{
   fail('');
   const digits=phone.replace(/\D/g,'');
   if(!['mtn','vod','atl'].includes(provider))return fail('Choose a supported mobile network.');
-  if(digits.length<9||digits.length>13)return fail('Enter a valid mobile money number, including its country code if needed.');
+  if(!/^0[25]\d{8}$/.test(digits))return fail('Enter a valid Ghana Mobile Money number starting with 0, for example 0240000000.');
+  const localPhone=digits;
   btn.disabled=true;btn.textContent='Sending prompt…';
   try{
-    const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'momo',provider,phone}});
+    const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'momo',provider,phone:localPhone}});
     if(error||!data||data.method!=='momo'||!data.reference)throw new Error('start');
     const msg=data.message||'A payment request has been sent. Check your phone and approve the prompt to complete payment.';
     const plan=PLANS.find(x=>x.id===S.payPlan);
@@ -1159,7 +1149,19 @@ ACT.paystackMomoStart=async(_,btn)=>{
     const status=$('ps-status');
     if(status)status.textContent='Confirmation is still pending. If you approved the prompt, your plan will activate automatically when Paystack confirms it. You can close this window and check your Account shortly.';
   }catch(e){
-    fail('Could not send the Mobile Money prompt. Check the number and network, then try again.');
+    let detail='';
+    try{
+      const response=e&&e.context;
+      if(response&&typeof response.clone==='function'){
+        const body=await response.clone().json();
+        detail=body.message||body.error||body.msg||'';
+      }else if(e&&e.message)detail=e.message;
+    }catch(_){}
+    const safe=String(detail||'').replace(/[<>]/g,'').slice(0,220);
+    fail(safe
+      ?'Paystack could not start this request: '+safe
+      :'Could not start the Mobile Money request. Check the number/network, then try again. If this repeats, check the paystack-init function logs.');
+    console.error('Paystack Mobile Money initialization failed:',e);
     btn.disabled=false;btn.textContent='Send payment prompt';
   }
 };
