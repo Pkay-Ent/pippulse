@@ -487,8 +487,8 @@ input[type=file]{padding:.55rem .7rem}
     <p class="hint" id="a-sms" hidden>Ghana numbers receive SMS alerts when a new signal is posted. Use an SMS-capable phone number.</p>
   </div>
 
-  <label for="a-email">Email Address</label>
-  <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+  <label for="a-email" id="a-email-label">Email Address</label>
+  <input id="a-email" type="text" inputmode="email" autocomplete="email" placeholder="you@example.com">
   
   <label for="a-pw">Password</label>
   <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
@@ -577,7 +577,7 @@ function friendly(e){
   /* Plain Error objects are our own form-validation messages: show them as written (library errors are subclasses) */
   if(e instanceof Error&&Object.getPrototypeOf(e)===Error.prototype&&e.message)return e.message;
   if(/failed to fetch|networkerror|load failed/i.test(m))return 'No connection. Check your internet and try again.';
-  if(/invalid login/i.test(m))return 'Email or password is incorrect.';
+  if(/invalid login|invalid credentials/i.test(m))return 'Username or password is incorrect.';
   if(/email not confirmed/i.test(m))return 'Confirm your email first. Open the link we sent you, then log in.';
   if(/rate limit|too many|over_email_send_rate/i.test(m))return 'Too many attempts. Wait a few minutes and try again.';
   if(/already registered/i.test(m))return 'This email is already registered. Log in instead.';
@@ -923,6 +923,7 @@ function authUI(){
   $('a-pw').hidden=fg;document.querySelector('label[for=a-pw]').hidden=fg;
   $('a-legal').hidden=S.mode!=='signup';
   if(fg){
+    $('a-email-label').textContent='Email Address';$('a-email').type='email';$('a-email').inputMode='email';$('a-email').autocomplete='email';$('a-email').placeholder='you@example.com';
     setErr('');$('a-fields').hidden=true;
     $('a-title').textContent='Reset password';
     $('a-sub').textContent='Enter your email and we will send you a reset link.';
@@ -934,7 +935,10 @@ function authUI(){
   if(S.mode==='login')$('a-sw').insertAdjacentHTML('beforeend',`<br><a href='#' data-act='authMode' data-id='forgot'>Forgot password?</a>`);
 }
 function authUI0(){
-  const su=S.mode==='signup';setErr('');cc();
+  const su=S.mode==='signup',login=S.mode==='login';setErr('');cc();
+  $('a-email-label').textContent=login?'Username':'Email Address';
+  $('a-email').type=login?'text':'email';$('a-email').inputMode=login?'text':'email';
+  $('a-email').autocomplete=login?'username':'email';$('a-email').placeholder=login?'Your username':'you@example.com';
   $('a-title').textContent=su?'Create account':'Welcome back';
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
@@ -946,7 +950,7 @@ async function submitAuth(){
   if(Date.now()<lockUntil)return setErr('Too many attempts. Wait '+Math.ceil((lockUntil-Date.now())/1000)+' seconds.');
   if(NOKEY)return toast('Add your publishable key in index.html first.');
   setErr('');
-  const email=$('a-email').value.trim().toLowerCase(),pw=$('a-pw').value;
+  const identifier=$('a-email').value.trim(),email=identifier.toLowerCase(),pw=$('a-pw').value;
   if(S.mode==='forgot'){
     if(!/^[^ @]+@[^ @]+[.][^ @]+$/.test(email))return setErr('Enter a valid email address.');
     if(Date.now()<fgUntil)return setErr('Please wait a moment before asking for another link.');
@@ -956,7 +960,7 @@ async function submitAuth(){
     fb.disabled=false;closeSheet('auth');
     return toast('If that email has an account, a reset link is on its way.');
   }
-  if(!email||!pw)return setErr('Enter your email and password.');
+  if(!identifier||!pw)return setErr(S.mode==='login'?'Enter your username and password.':'Enter your email and password.');
   const btn=$('a-go');btn.disabled=true;
   try{
     if(S.mode==='signup'){
@@ -975,8 +979,11 @@ async function submitAuth(){
       closeSheet('auth');
       if(data.session)toast('Welcome to PipPulse Gold.');else{S.pendingEmail=email;openSheet('confirm')}
     }else{
-      const{error}=await sb.auth.signInWithPassword({email,password:pw});
+      const{data,error}=await sb.functions.invoke('username-login',{body:{username:identifier,password:pw}});
       if(error)throw error;
+      if(!data||!data.session||!data.session.access_token||!data.session.refresh_token)throw new Error((data&&data.error)||'Username or password is incorrect.');
+      const{error:sessionError}=await sb.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+      if(sessionError)throw sessionError;
       closeSheet('auth');toast('Welcome back.');
     }
     $('a-pw').value='';fails=0;
@@ -1059,9 +1066,6 @@ function renderPay(){
 
   /* Step 1: choose how to pay */
   if(S.payStep==='paystack_momo'){
-    const savedPhone=(S.profile&&S.profile.phone)||'';
-    const profilePhone=(S.profile&&S.profile.country==='Ghana'&&savedPhone.startsWith('+233'))
-      ?'0'+savedPhone.slice(4):savedPhone;
     $('pay-body').innerHTML=`<button class='btn mini' data-act='payBack'>&lsaquo; Back</button>${head}
       <p class='lbl'>Mobile network</p>
       <select id='ps-provider' aria-label='Mobile network'>
@@ -1070,7 +1074,7 @@ function renderPay(){
         <option value='atl'>AT Money</option>
       </select>
       <label for='ps-phone'>Mobile Money number</label>
-      <input id='ps-phone' type='tel' inputmode='tel' autocomplete='tel' maxlength='20' placeholder='024 000 0000' value='${esc(profilePhone)}'>
+      <input id='ps-phone' type='tel' inputmode='tel' autocomplete='tel' maxlength='20' placeholder='024 000 0000' value=''>
       <p class='hint'>Enter the number linked to your Mobile Money wallet. Paystack will send a payment prompt to that phone. Approve it on your phone to complete payment.</p>
       <p class='err' id='ps-err' role='alert' hidden></p>
       <button class='btn gold' data-act='paystackMomoStart'>Send payment prompt</button>
@@ -1158,14 +1162,23 @@ ACT.paystackMomoStart=async(_,btn)=>{
       <li><b>Keep this page open briefly</b><small class='pn'>Your premium access activates automatically after Paystack confirms the payment. Reference: ${esc(data.reference)}</small></li></ol>
       <p class='hint' id='ps-status'>Waiting for payment confirmation…</p>
       <button class='btn' data-act='closeSheet' data-id='pay'>Close</button>`;
-    for(let i=0;i<12;i++){
-      await new Promise(r=>setTimeout(r,5000));
-      await loadPayments();
-      const paid=(S.payments||[]).some(x=>x.reference===data.reference&&x.status==='activated');
-      if(paid){await refresh();render();show('account');toast('Payment confirmed. Your plan is active.');return}
+    for(let i=0;i<120;i++){
+      await new Promise(r=>setTimeout(r,3000));
+      await refresh();
+      const payment=(S.payments||[]).find(x=>x.reference===data.reference);
+      if(payment&&String(payment.status||'').toLowerCase()==='activated'){
+        $('pay-body').innerHTML=`\${orderHead}
+          <div class='active-b'><b>Payment successful!</b><small>Your payment has been confirmed and your Premium access is active.</small></div>
+          <p class='hint'>You can now continue using PipPulse. Your subscription has been updated.</p>
+          <button class='btn gold' data-act='closeSheet' data-id='pay'>Continue to PipPulse</button>`;
+        toast('Payment confirmed. Your plan is active.');
+        return;
+      }
+      const status=$('ps-status');
+      if(status)status.textContent='Still checking for Paystack confirmation…';
     }
     const status=$('ps-status');
-    if(status)status.textContent='Confirmation is still pending. If you approved the prompt, your plan will activate automatically when Paystack confirms it. You can close this window and check your Account shortly.';
+    if(status)status.textContent='Payment confirmation is taking longer than usual. PipPulse will keep checking when you return to your account. You do not need to pay again while this transaction is pending.';
   }catch(e){
     let detail='';
     try{
@@ -1214,7 +1227,7 @@ ACT.paySubmit=async(_,btn)=>{
 function payList(){
   const L=S.payments||[];if(!L.length)return '';
   const lab={pending:'Awaiting review',activated:'Activated',rejected:'Rejected'};
-  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}${x.payment_method==='paystack'?' · Paystack':''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
+  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
 }
 
 /* --- Admin dashboard (the page only shows it; the database enforces who may use it) --- */
