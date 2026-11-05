@@ -1130,7 +1130,7 @@ ACT.paystackMomoStart=async(_,btn)=>{
   const localPhone=digits;
   btn.disabled=true;btn.textContent='Sending prompt…';
   try{
-    const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'momo',provider,phone:localPhone}});
+    const{data,error}=await sb.functions.invoke('super-responder',{body:{plan:S.payPlan,method:'momo',provider,phone:localPhone}});
     if(error||!data||data.method!=='momo'||!data.reference){
       let detail=String(data?.error||data?.message||'');
       if(error){
@@ -1148,7 +1148,7 @@ ACT.paystackMomoStart=async(_,btn)=>{
         }
         detail=detail||error.message||error.name||'';
       }
-      throw new Error(detail||'The payment service did not return a valid Mobile Money response. Please check the paystack-init function logs.');
+      throw new Error(detail||'The payment service did not return a valid Mobile Money response. Please check the super-responder function logs.');
     }
     const msg=data.message||'A payment request has been sent. Check your phone and approve the prompt to complete payment.';
     const plan=PLANS.find(x=>x.id===S.payPlan);
@@ -1178,7 +1178,7 @@ ACT.paystackMomoStart=async(_,btn)=>{
     const safe=String(detail||'').replace(/[<>]/g,'').slice(0,220);
     fail(safe
       ?'Paystack could not start this request: '+safe
-      :'Could not start the Mobile Money request. Check the number/network, then try again. If this repeats, check the paystack-init function logs.');
+      :'Could not start the Mobile Money request. Check the number/network, then try again. If this repeats, check the super-responder function logs.');
     console.error('Paystack Mobile Money initialization failed:',e);
     btn.disabled=false;btn.textContent='Send payment prompt';
   }
