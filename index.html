@@ -1131,7 +1131,25 @@ ACT.paystackMomoStart=async(_,btn)=>{
   btn.disabled=true;btn.textContent='Sending prompt…';
   try{
     const{data,error}=await sb.functions.invoke('paystack-init',{body:{plan:S.payPlan,method:'momo',provider,phone:localPhone}});
-    if(error||!data||data.method!=='momo'||!data.reference)throw new Error('start');
+    if(error||!data||data.method!=='momo'||!data.reference){
+      let detail=String(data?.error||data?.message||'');
+      if(error){
+        const response=error.context;
+        if(response&&typeof response.clone==='function'){
+          try{
+            const raw=await response.clone().text();
+            if(raw){
+              try{
+                const body=JSON.parse(raw);
+                detail=body.error||body.message||body.msg||detail;
+              }catch(_){detail=raw||detail}
+            }
+          }catch(_){}
+        }
+        detail=detail||error.message||error.name||'';
+      }
+      throw new Error(detail||'The payment service did not return a valid Mobile Money response. Please check the paystack-init function logs.');
+    }
     const msg=data.message||'A payment request has been sent. Check your phone and approve the prompt to complete payment.';
     const plan=PLANS.find(x=>x.id===S.payPlan);
     const orderHead=plan?`<h3>Checkout</h3><div class='ordr'><div><b>${esc(plan.label)}</b><small>${esc(plan.id==='lifetime'?'Lifetime access':plan.months+(plan.months>1?' months':' month')+' of access')}</small></div><div class='ordp'>${esc(payMethods().includes('momo')?'GH₵'+plan.ghs:'$'+plan.usd)}</div></div>`:'<h3>Checkout</h3>';
