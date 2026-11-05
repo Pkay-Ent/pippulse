@@ -92,6 +92,8 @@ begin
 end;
 $$;
 
+revoke all on function public.create_signal_notification() from public, anon, authenticated;
+
 drop trigger if exists signals_create_notification on public.signals;
 create trigger signals_create_notification
   after insert or update of status, published_at
