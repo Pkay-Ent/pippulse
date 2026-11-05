@@ -980,11 +980,18 @@ async function submitAuth(){
       closeSheet('auth');
       if(data.session)toast('Welcome to PipPulse Gold.');else{S.pendingEmail=email;openSheet('confirm')}
     }else{
-      const{data,error}=await sb.functions.invoke('username-login',{body:{username:identifier,password:pw}});
-      if(error)throw error;
-      if(!data||!data.session||!data.session.access_token||!data.session.refresh_token)throw new Error((data&&data.error)||'Username/email or password is incorrect.');
-      const{error:sessionError}=await sb.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
-      if(sessionError)throw sessionError;
+      if(identifier.includes('@')){
+        /* Email login uses Supabase Auth directly; it does not depend on the username Edge Function. */
+        const{error}=await sb.auth.signInWithPassword({email:email,password:pw});
+        if(error)throw error;
+      }else{
+        /* Username login resolves the account email inside the server-side Edge Function. */
+        const{data,error}=await sb.functions.invoke('username-login',{body:{identifier:identifier,password:pw,username:identifier}});
+        if(error)throw new Error('Username login could not reach the server. Confirm that the latest username-login Edge Function is deployed with JWT verification OFF.');
+        if(!data||!data.session||!data.session.access_token||!data.session.refresh_token)throw new Error((data&&data.error)||'Username or password is incorrect.');
+        const{error:sessionError}=await sb.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+        if(sessionError)throw sessionError;
+      }
       closeSheet('auth');toast('Welcome back.');
     }
     $('a-pw').value='';fails=0;
@@ -1001,6 +1008,11 @@ let fgUntil=0,resendAt=0;
 S.payments=[];S.pay={};S.pendingEmail=null;S.payPlan=null;
 S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},msg:''};
 ACT.closeSheet=id=>closeSheet(id);
+ACT.continueSignals=async()=>{
+  closeSheet('pay');
+  await refresh();
+  show('signals');
+};
 ACT.authMode=id=>{S.mode=id;authUI()};
 ACT.adminOpen=()=>showAdmin();
 ACT.adminBack=()=>show('account');
@@ -1171,7 +1183,7 @@ ACT.paystackMomoStart=async(_,btn)=>{
         $('pay-body').innerHTML=`${orderHead}
           <div class='active-b'><b>Payment successful!</b><small>Your payment has been confirmed and your Premium access is active.</small></div>
           <p class='hint'>You can now continue using PipPulse. Your subscription has been updated.</p>
-          <button class='btn gold' data-act='closeSheet' data-id='pay'>Continue to PipPulse</button>`;
+          <button class='btn gold' data-act='continueSignals'>Continue to PipPulse</button>`;
         toast('Payment confirmed. Your plan is active.');
         return;
       }
