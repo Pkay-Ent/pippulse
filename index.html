@@ -1167,7 +1167,7 @@ ACT.paystackMomoStart=async(_,btn)=>{
       await refresh();
       const payment=(S.payments||[]).find(x=>x.reference===data.reference);
       if(payment&&String(payment.status||'').toLowerCase()==='activated'){
-        $('pay-body').innerHTML=`\${orderHead}
+        $('pay-body').innerHTML=`${orderHead}
           <div class='active-b'><b>Payment successful!</b><small>Your payment has been confirmed and your Premium access is active.</small></div>
           <p class='hint'>You can now continue using PipPulse. Your subscription has been updated.</p>
           <button class='btn gold' data-act='closeSheet' data-id='pay'>Continue to PipPulse</button>`;
