@@ -1,4 +1,4 @@
--- Premium-only signal notifications for PipPulse.
+-- In-app signal notifications for all signed-in PipPulse users.
 -- Creates one safe preview notification whenever a signal is published.
 -- Full signal details remain protected by the existing signal access rules.
 
@@ -32,8 +32,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select coalesce(public.is_admin(), false)
-      or coalesce(public.has_active_subscription(), false);
+  select auth.uid() is not null;
 $$;
 
 revoke all on function public.can_receive_signal_notifications() from public, anon;
@@ -48,33 +47,37 @@ revoke all on public.signal_notification_reads from anon, authenticated;
 grant select, insert, update on public.signal_notification_reads to authenticated;
 
 drop policy if exists "Premium users read signal notifications" on public.signal_notifications;
-create policy "Premium users read signal notifications"
+drop policy if exists "Signed-in users read signal notifications" on public.signal_notifications;
+create policy "Signed-in users read signal notifications"
   on public.signal_notifications
   for select
   to authenticated
   using (public.can_receive_signal_notifications());
 
 drop policy if exists "Premium users read their notification receipts" on public.signal_notification_reads;
-create policy "Premium users read their notification receipts"
+drop policy if exists "Signed-in users read their notification receipts" on public.signal_notification_reads;
+create policy "Signed-in users read their notification receipts"
   on public.signal_notification_reads
   for select
   to authenticated
-  using (user_id = (select auth.uid()) and public.can_receive_signal_notifications());
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "Premium users create their notification receipts" on public.signal_notification_reads;
-create policy "Premium users create their notification receipts"
+drop policy if exists "Signed-in users create their notification receipts" on public.signal_notification_reads;
+create policy "Signed-in users create their notification receipts"
   on public.signal_notification_reads
   for insert
   to authenticated
-  with check (user_id = (select auth.uid()) and public.can_receive_signal_notifications());
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "Premium users update their notification receipts" on public.signal_notification_reads;
-create policy "Premium users update their notification receipts"
+drop policy if exists "Signed-in users update their notification receipts" on public.signal_notification_reads;
+create policy "Signed-in users update their notification receipts"
   on public.signal_notification_reads
   for update
   to authenticated
-  using (user_id = (select auth.uid()) and public.can_receive_signal_notifications())
-  with check (user_id = (select auth.uid()) and public.can_receive_signal_notifications());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create or replace function public.create_signal_notification()
 returns trigger
