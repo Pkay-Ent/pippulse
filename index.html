@@ -733,7 +733,7 @@ function renderBadge(){
   const changed=b.textContent!==t;b.textContent=t;b.className='pill '+c+(changed&&b.dataset.init?' pop':'');b.dataset.init=1;
 }
 
-function notificationEligible(){return !!S.user&&!!S.access&&(S.access.premium||S.access.is_admin)}
+function notificationEligible(){return !!S.user}
 function renderNotifications(){
   const btn=$('notif-btn'),panel=$('notif-panel');if(!btn||!panel)return;
   const allowed=notificationEligible();btn.hidden=!allowed;
@@ -766,7 +766,7 @@ function watchNotifications(){
   if(!notificationEligible()){stopWatchingNotifications();return}
   if(notificationChannel&&notificationUserId===S.user.id)return;
   stopWatchingNotifications();notificationUserId=S.user.id;
-  notificationChannel=sb.channel('premium-signal-notifications-'+S.user.id)
+  notificationChannel=sb.channel('signal-notifications-'+S.user.id)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'signal_notifications'},()=>{
       loadNotifications();toast('A new signal alert is available.');
     }).subscribe();
@@ -781,7 +781,7 @@ function toggleNotifications(){
   if(S.notificationOpen)loadNotifications();else renderNotifications();
 }
 async function openNotification(id){
-  if(!S.user||!notificationEligible())return;
+  if(!S.user)return;
   try{
     const{error}=await sb.from('signal_notification_reads').upsert({notification_id:id,user_id:S.user.id,read_at:new Date().toISOString()},{onConflict:'notification_id,user_id'});
     if(error)throw error;
