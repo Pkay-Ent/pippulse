@@ -821,6 +821,7 @@ function renderChat(){
     return;
   }
   const messages=S.chatMessages||[];
+  const draft=$('chat-input')?.value||'';
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
     <p class="chat-intro">Keep conversations respectful. Do not share passwords, private payment details or personal information.</p>
     <div class="chat-wrap">
@@ -829,7 +830,7 @@ function renderChat(){
         return `<article class="chat-msg ${mine?'mine':''}"><div class="chat-meta"><b>${esc(m.author_name||'PipPulse member')}</b><time>${esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</time>${canDelete?`<button class="chat-delete" data-act="chatDelete" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:''}</div><p>${esc(m.body)}</p></article>`;
       }).join(''):'<div class="empty">No messages yet. Start the conversation.</div>'}</div>
       <form class="chat-compose" id="chat-form" onsubmit="return false">
-        <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message…" aria-label="Write a chat message"></textarea>
+        <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message…" aria-label="Write a chat message">${esc(draft)}</textarea>
         <button class="btn gold" id="chat-send" type="button" data-act="chatSend">Send</button>
       </form>
       <p class="chat-status">Messages are visible to signed-in members. Please be respectful.</p>
@@ -1602,6 +1603,12 @@ function adminAuditHtml(){
   return `<div class='card rows'>${L.map(a=>{const d=a.details||{},bits=Object.keys(d).map(k=>k+': '+d[k]).join(', ');return `<div class='row'><div><b>${esc(String(a.action).split('_').join(' '))}</b><small class='pn'>${esc(a.actor_name||'')}${bits?' · '+esc(bits):''}</small></div><span>${esc(new Date(a.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</span></div>`}).join('')}</div>`;
 }
 
+/* Enter sends a chat message; Shift+Enter inserts a new line. */
+document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='chat-input'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+    e.preventDefault();sendChat();
+  }
+});
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
   const note=e.target.closest('[data-notification]');if(note){openNotification(note.dataset.notification);return}
