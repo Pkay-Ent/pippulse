@@ -960,11 +960,11 @@ async function submitAuth(){
     fb.disabled=false;closeSheet('auth');
     return toast('If that email has an account, a reset link is on its way.');
   }
-  if(!identifier||!pw)return setErr(S.mode==='login'?'Enter your username and password.':'Enter your email and password.');
+  if(!identifier||!pw)return setErr(S.mode==='login'?'Enter your username or email address and password.':'Enter your email and password.');
   const btn=$('a-go');btn.disabled=true;
   try{
     if(S.mode==='signup'){
-      const name=$('a-name').value.trim().slice(0,60),username=$('a-username').value.trim(),country=$('a-country').value;
+      const name=$('a-name').value.trim().slice(0,60),username=$('a-username').value.trim().toLowerCase(),country=$('a-country').value;
       if(!name)throw new Error('Enter your full name.');
       if(!/^[A-Za-z0-9_]{3,20}$/.test(username))throw new Error('Username must be 3 to 20 letters, numbers or underscores.');
       if(!country)throw new Error('Select your country.');
@@ -972,7 +972,8 @@ async function submitAuth(){
       if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., +233 24 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
       if(pw.length<8||!/[A-Za-z]/.test(pw)||!/\d/.test(pw))throw new Error('Password needs at least 8 characters, with a letter and a number.');
       const{data:avail,error:ue}=await sb.rpc('is_username_available',{p_username:username});
-      if(!ue&&avail===false)throw new Error('That username is taken. Try another.');
+      if(ue)throw new Error('We could not verify that username is available. Please try again.');
+      if(avail!==true)throw new Error('That username is already taken. Please choose another.');
       const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name,username,phone,country},emailRedirectTo:location.origin}});
       if(error)throw error;
       if(data.user&&data.user.identities&&!data.user.identities.length)throw new Error('This email is already registered. Log in instead.');
@@ -981,7 +982,7 @@ async function submitAuth(){
     }else{
       const{data,error}=await sb.functions.invoke('username-login',{body:{username:identifier,password:pw}});
       if(error)throw error;
-      if(!data||!data.session||!data.session.access_token||!data.session.refresh_token)throw new Error((data&&data.error)||'Username or password is incorrect.');
+      if(!data||!data.session||!data.session.access_token||!data.session.refresh_token)throw new Error((data&&data.error)||'Username/email or password is incorrect.');
       const{error:sessionError}=await sb.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
       if(sessionError)throw sessionError;
       closeSheet('auth');toast('Welcome back.');
@@ -989,7 +990,7 @@ async function submitAuth(){
     $('a-pw').value='';fails=0;
   }catch(e){
     if(/email not confirmed/i.test(String((e&&e.message)||''))){S.pendingEmail=email;closeSheet('auth');openSheet('confirm');return}
-    if(++fails>=5){lockUntil=Date.now()+30000;fails=0}setErr(friendly(e))}
+    if(/duplicate key|profiles_username_ci_unique|username.*already exists/i.test(String((e&&e.message)||'')))setErr('That username is already taken. Please choose another.');else{if(++fails>=5){lockUntil=Date.now()+30000;fails=0}setErr(friendly(e))}}
   finally{btn.disabled=false}
 }
 async function logout(){await sb.auth.signOut();S.seen.clear();toast('You have been logged out.');show('signals')}
