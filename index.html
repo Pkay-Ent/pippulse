@@ -936,9 +936,9 @@ function authUI(){
 }
 function authUI0(){
   const su=S.mode==='signup',login=S.mode==='login';setErr('');cc();
-  $('a-email-label').textContent=login?'Username or Email Address':'Email Address';
+  $('a-email-label').textContent=login?'Username or Email':'Email Address';
   $('a-email').type=login?'text':'email';$('a-email').inputMode=login?'text':'email';
-  $('a-email').autocomplete=login?'username':'email';$('a-email').placeholder=login?'Enter username or email address':'you@example.com';
+  $('a-email').autocomplete=login?'username':'email';$('a-email').placeholder=login?'Enter username or email':'you@example.com';
   $('a-title').textContent=su?'Create account':'Welcome back';
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
