@@ -475,7 +475,20 @@ input[type=file]{padding:.55rem .7rem}
       <rect x="7" y="35" width="34" height="6.5" rx="2" fill="url(#gC)" stroke="#8A5A0B" stroke-width=".8"/>
       <circle cx="4" cy="13" r="2.4" fill="#FFF3B8" stroke="#B45309" stroke-width=".7"/><circle cx="24" cy="6" r="2.7" fill="#FFF3B8" stroke="#B45309" stroke-width=".7"/><circle cx="44" cy="13" r="2.4" fill="#FFF3B8" stroke="#B45309" stroke-width=".7"/>
       <circle cx="24" cy="38.2" r="2.2" fill="#EF4444" stroke="#7F1D1D" stroke-width=".5"/><circle cx="14" cy="38.2" r="1.5" fill="#38BDF8"/><circle cx="34" cy="38.2" r="1.5" fill="#38BDF8"/><path class="spk" d="M41 1l1.2 3 3 1.2-3 1.2L41 9.400l-1.200-3-3-1.200 3-1.200z" fill="#FFF7CC"/><path class="spk s2" d="M7 0l.9 2.200 2.200.9-2.200.9L7 6.200l-.9-2.200-2.200-.9 2.200-.9z" fill="#FFF7CC"/></svg></span>Premium</button>
-    <button id="n-chat" onclick="show('chat')" aria-label="Community chat"><span class="ico" aria-hidden="true"><svg class="ni" viewBox="0 0 48 48"><path d="M7 9.5A5.5 5.5 0 0 1 12.5 4h23A5.5 5.5 0 0 1 41 9.5v17a5.5 5.5 0 0 1-5.5 5.5H20l-9 7v-7.5A5.5 5.5 0 0 1 7 26z" fill="none" stroke="#F5C042" stroke-width="2.5" stroke-linejoin="round"/><path d="M15 15h18M15 22h13" stroke="#F5C042" stroke-width="2.5" stroke-linecap="round"/></svg></span>Chat</button>
+    <button id="n-chat" onclick="show('chat')" aria-label="Community chat"><span class="ico" aria-hidden="true"><svg class="ni chat-3d" viewBox="0 0 48 48">
+      <defs>
+        <linearGradient id="chatGold" x1="0" y1="0" x2=".25" y2="1"><stop offset="0" stop-color="#FFF6B0"/><stop offset=".28" stop-color="#FFD84D"/><stop offset=".62" stop-color="#F5A900"/><stop offset="1" stop-color="#9B5700"/></linearGradient>
+        <linearGradient id="chatGoldSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D88A08"/><stop offset="1" stop-color="#663600"/></linearGradient>
+        <radialGradient id="chatShine" cx=".3" cy=".18" r=".8"><stop offset="0" stop-color="#FFFBE0" stop-opacity=".95"/><stop offset=".45" stop-color="#FFE27A" stop-opacity=".18"/><stop offset="1" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+        <filter id="chatGlow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <path d="M8 13.5A9 9 0 0 1 17 4.5h19a8 8 0 0 1 8 8v13a8 8 0 0 1-8 8H23l-10 8 1.7-9A8.5 8.5 0 0 1 8 24z" fill="url(#chatGoldSide)" stroke="#754000" stroke-width="1.4" transform="translate(0 2)"/>
+      <path d="M6 11.5A8.5 8.5 0 0 1 14.5 3h20A8.5 8.5 0 0 1 43 11.5v13a8.5 8.5 0 0 1-8.5 8.5H21l-10 8 1.8-9A8.5 8.5 0 0 1 6 24.5z" fill="url(#chatGold)" stroke="#FFF0A0" stroke-width="1.2" filter="url(#chatGlow)"/>
+      <path d="M7.5 11.8A7 7 0 0 1 14.5 5h20a7 7 0 0 1 7 7v5H7.5z" fill="url(#chatShine)"/>
+      <circle cx="17" cy="19" r="2.4" fill="#603500"/><circle cx="24.5" cy="19" r="2.4" fill="#603500"/><circle cx="32" cy="19" r="2.4" fill="#603500"/>
+      <path d="M16 25.5q8 5 17 0" fill="none" stroke="#FFF0A0" stroke-width="1.5" stroke-linecap="round" opacity=".9"/>
+      <path d="M9 12q1-6 7-7" fill="none" stroke="#FFFDE0" stroke-width="1.5" stroke-linecap="round" opacity=".9"/>
+    </svg></span>Chat</button>
     <button id="n-account" onclick="show('account')" aria-label="Account"><span class="ico" aria-hidden="true"><svg class="ni" viewBox="0 0 48 48"><defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F4F6"/><stop offset="1" stop-color="#7C8AA5"/></linearGradient><linearGradient id="gV" x1="0" x2="1"><stop offset="0" stop-color="#0B0F17"/><stop offset="1" stop-color="#25334A"/></linearGradient></defs>
       <path d="M24 8V3.5" stroke="#9CA3AF" stroke-width="1.6" stroke-linecap="round"/><circle class="blk" cx="24" cy="3" r="2" fill="#F5C042"/>
       <rect x="9.5" y="15" width="3.6" height="7.5" rx="1.8" fill="#7C8AA5"/><rect x="34.9" y="15" width="3.6" height="7.5" rx="1.8" fill="#7C8AA5"/>
@@ -1050,7 +1063,7 @@ function renderAccount(){
   const p=S.profile||{}, m=(S.user&&S.user.user_metadata)||{}, a=S.access||{};
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
-  const nm=p.display_name||m.full_name||'Member';
+  const nm=p.display_name||m.full_name||(a.is_admin?'PipPulse Admin':'Member');
   const un=p.username||(S.profile?'':m.username)||'-'; /* sign-up name is used only when the profile row did not load; a loaded profile with no username shows a dash */
   const ph=p.phone||m.phone||'-';
   const ct=p.country||m.country||'-';
