@@ -1063,7 +1063,7 @@ function renderAccount(){
   const p=S.profile||{}, m=(S.user&&S.user.user_metadata)||{}, a=S.access||{};
   const plan=a.is_admin?'Admin':a.subscription?(PLANS.find(x=>x.id===a.subscription.plan)||{label:a.subscription.plan}).label:'Free';
   const exp=a.subscription&&a.subscription.expires_at?new Date(a.subscription.expires_at).toLocaleDateString([], {dateStyle:'medium'}):(a.subscription?'Never':'-');
-  const nm=p.display_name||m.full_name||(a.is_admin?'PipPulse Admin':'Member');
+  const nm=(p.display_name&&p.display_name.trim().toLowerCase()!=='member'?p.display_name:null)||m.full_name||(a.is_admin?'PipPulse Admin':'Member');
   const un=p.username||(S.profile?'':m.username)||'-'; /* sign-up name is used only when the profile row did not load; a loaded profile with no username shows a dash */
   const ph=p.phone||m.phone||'-';
   const ct=p.country||m.country||'-';
