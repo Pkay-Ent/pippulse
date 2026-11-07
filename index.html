@@ -1621,7 +1621,7 @@ function renderPay(){
      <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet (optional)'}</label>
      <input id='p-sender' maxlength='60' autocomplete='off' value='${esc(keepSender)}'>
      <p class='err' id='p-err' role='alert' hidden></p></li>
-    <li><b>We confirm and activate</b><small class='pn'>An administrator checks your payment and activates your plan.</small></li>
+    <li><b>We confirm and activate</b><small class='pn'>${momo?'An administrator checks your Mobile Money payment.':'Your USDT transfer is checked automatically after TRON confirms it. You do not need to contact an administrator.'}</small></li>
    </ol>
    <button class='btn gold' data-act='paySubmit'${net?'':' disabled'}>I have paid, submit</button>
    <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>`;
@@ -1720,14 +1720,31 @@ async function checkReturn(){
 }
 ACT.paySubmit=async(_,btn)=>{
   const ref=$('p-ref').value.trim(),sender=$('p-sender').value.trim(),err=$('p-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
-  if(ref.length<3)return fail('Enter the payment reference or transaction ID.');
+  if(!S.payNet)return fail('Choose how you will pay.');
+  if(S.payMethod==='usdt'&&!/^[0-9a-fA-F]{64}$/.test(ref))return fail('Enter the 64-character TRON transaction hash.');
+  if(S.payMethod!=='usdt'&&ref.length<3)return fail('Enter the Mobile Money transaction ID.');
   btn.disabled=true;
   try{
-    if(!S.payNet)return fail('Choose how you will pay.');
     const{data,error}=await sb.rpc('submit_payment',{p_plan:S.payPlan,p_method:S.payMethod,p_network:S.payNet,p_reference:ref,p_sender:sender||null});
     if(error)throw error;
     if(!data||!data.success)return fail((data&&data.message)||'Could not submit the payment.');
-    closeSheet('pay');toast('Payment submitted. We will confirm it soon.');
+
+    let notice='Payment submitted. We will confirm it soon.';
+    if(S.payMethod==='usdt'){
+      const{data:verification,error:verificationError}=await sb.functions.invoke('verify-trc20',{body:{reference:ref}});
+      if(verificationError)throw verificationError;
+      if(verification&&verification.success){
+        notice='USDT payment confirmed. Your subscription is active.';
+      }else if(verification&&verification.reason==='NOT_CONFIRMED'){
+        notice='Your payment is recorded. TRON confirmation is still pending; we will check again shortly.';
+      }else if(verification&&verification.reason==='TRANSFER_NOT_FOUND'){
+        notice='Your payment is recorded, but the matching USDT transfer was not found yet. Please check the transaction hash and try again.';
+      }else{
+        notice=(verification&&verification.message)||'Your payment is recorded but could not yet be verified. Please try again shortly.';
+      }
+    }
+
+    closeSheet('pay');toast(notice);
     await loadPayments();render();show('account');
   }catch(e){fail(friendly(e))}
   finally{btn.disabled=false}
