@@ -207,9 +207,15 @@ nav button.on .ico{filter:none}
 .chat-msg.mine{align-self:flex-end;background:rgba(245,192,66,.09);border-color:rgba(245,192,66,.22);border-radius:.9rem .9rem .25rem .9rem}
 .chat-meta{display:flex;align-items:center;gap:.45rem;margin-bottom:.25rem;font-size:.72rem;color:var(--tx2)}
 .chat-meta b{color:var(--gold);font-size:.78rem}.chat-msg p{margin:0;white-space:pre-wrap;font-size:.9rem;line-height:1.45}
-.chat-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.45rem}
-.chat-action{border:0;background:transparent;color:var(--tx2);font:inherit;font-size:.72rem;padding:.15rem .2rem;cursor:pointer}
-.chat-action:hover{color:var(--gold)}
+.chat-actions{display:none}
+.chat-action{border:0;background:transparent;color:var(--tx2);font:inherit;font-size:.78rem;padding:.4rem .55rem;cursor:pointer;text-align:left}
+.chat-action:hover{color:var(--gold);background:var(--s2)}
+.chat-context{position:fixed;z-index:120;min-width:150px;padding:.35rem;background:var(--s1);border:1px solid var(--line2);border-radius:.8rem;box-shadow:0 12px 35px rgba(0,0,0,.5);display:grid;gap:.1rem}
+.chat-context[hidden]{display:none}
+.chat-context button{border:0;border-radius:.45rem;background:transparent;color:var(--tx);font:inherit;font-size:.85rem;text-align:left;padding:.6rem .75rem}
+.chat-context button:hover{background:var(--s2);color:var(--gold)}
+.chat-typing{min-height:1.15rem;margin:-.35rem .35rem -.35rem;color:var(--gold);font-size:.75rem;font-weight:600}
+.chat-typing:empty{visibility:hidden}
 .chat-quote{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--gold);border-radius:.35rem;background:rgba(245,192,66,.08);color:var(--tx2);padding:.45rem .55rem;margin:0 0 .5rem;cursor:pointer;font:inherit;font-size:.75rem;overflow:hidden}
 .chat-quote b{display:block;color:var(--gold);font-size:.72rem;margin-bottom:.12rem}
 .chat-quote span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -618,7 +624,8 @@ const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false};
 let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false;
-let chatReplyTo=null,chatEditId=null;
+let chatReplyTo=null,chatEditId=null,chatTypingTimer=null,chatTypingStopTimer=null,chatLongPressTimer=null,chatLongPressFired=false;
+const chatTypingUsers=new Map();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f2=n=>Number(n).toFixed(2);
@@ -884,12 +891,30 @@ async function openNotification(id){
 
 /* ===== Community chat ===== */
 function stopChat(){
+  if(chatTypingStopTimer)clearTimeout(chatTypingStopTimer);if(chatTypingTimer)clearTimeout(chatTypingTimer);
   if(chatChannel){sb.removeChannel(chatChannel);chatChannel=null}
-  chatUserId=null;
+  chatTypingUsers.clear();chatUserId=null;updateChatTyping();closeChatMenu();
 }
 function chatName(){
   const p=S.profile||{};
-  return p.username?'@'+p.username:(p.display_name||'PipPulse member');
+  return S.access&&S.access.is_admin?'@admin':p.username?'@'+p.username:(p.display_name||'PipPulse member');
+}
+function updateChatTyping(){
+  const el=$('chat-typing');if(!el)return;
+  const names=[...chatTypingUsers.values()].filter(x=>x.user_id!==S.user?.id).map(x=>x.name).slice(0,2);
+  el.textContent=names.length===1?names[0]+' is typing…':names.length===2?names.join(' and ')+' are typing…':'';
+}
+function sendChatTyping(isTyping){
+  if(!chatChannel||!S.user)return;
+  chatChannel.send({type:'broadcast',event:'typing',payload:{user_id:S.user.id,name:chatName(),typing:!!isTyping}}).catch(()=>{});
+}
+function handleChatTyping(payload){
+  if(!payload||!payload.user_id||payload.user_id===S.user?.id)return;
+  if(payload.typing){chatTypingUsers.set(payload.user_id,{user_id:payload.user_id,name:payload.name||'A member'});}
+  else chatTypingUsers.delete(payload.user_id);
+  updateChatTyping();
+  const old=chatTypingUsers.get(payload.user_id);
+  if(payload.typing)setTimeout(()=>{const now=chatTypingUsers.get(payload.user_id);if(now===old){chatTypingUsers.delete(payload.user_id);updateChatTyping()}},4500);
 }
 function chatText(value){
   return esc(value).replace(/(^|\\s)@([a-zA-Z0-9_]{2,30})/g,'$1<span class="chat-mention">@$2</span>');
@@ -921,17 +946,19 @@ function renderChat(){
           <div class="chat-meta"><b>${esc(m.author_name||'PipPulse member')}</b><time>${esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</time>${m.updated_at?'<small>edited</small>':''}</div>
           ${m.body?`<p>${chatText(m.body)}</p>`:''}
           ${m.image_url?`<a href="${esc(m.image_url)}" target="_blank" rel="noopener noreferrer"><img class="chat-image" src="${esc(m.image_url)}" alt="Shared chat image" loading="lazy"></a>`:''}
-          <div class="chat-actions"><button class="chat-action" data-act="chatReply" data-id="${esc(m.id)}">↩ Reply</button>${canEdit?`<button class="chat-action" data-act="chatEdit" data-id="${esc(m.id)}">Edit</button>`:''}${canDelete?`<button class="chat-action" data-act="chatDelete" data-id="${esc(m.id)}">Delete</button>`:''}</div>
+
         </article>`;
       }).join(''):'<div class="empty">No messages yet. Start the conversation.</div>'}</div>
       ${editMsg?`<div class="chat-quote"><b>Editing your message</b><span>You can change the text below.</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:replyMsg?`<div class="chat-quote"><b>↪ Replying to ${esc(replyMsg.author_name)}</b><span>${esc(replyMsg.body||'Photo')}</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:''}
+      <div class="chat-typing" id="chat-typing" aria-live="polite"></div>
       <form class="chat-compose" id="chat-form" onsubmit="return false">
         <label class="chat-attach" for="chat-image" aria-label="Attach a photo" title="Attach a photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
         <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
         <button class="btn gold" id="chat-send" type="button" data-act="chatSend">${editMsg?'Save':'Send'}</button>
       </form>
       <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
-    </div>`;
+    </div>
+    <div class="chat-context" id="chat-context" hidden></div>`;
 }
 async function loadChat(){
   if(!S.user)return;
@@ -956,7 +983,8 @@ function watchChat(){
   if(!S.user){stopChat();return}
   if(chatChannel&&chatUserId===S.user.id)return;
   stopChat();chatUserId=S.user.id;
-  chatChannel=sb.channel('community-chat-'+S.user.id)
+  chatChannel=sb.channel('community-chat-live',{config:{broadcast:{self:false}}})
+    .on('broadcast',{event:'typing'},({payload})=>handleChatTyping(payload))
     .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_messages'},()=>{
       const feed=$('chat-feed'),nearBottom=feed?feed.scrollHeight-feed.scrollTop-feed.clientHeight<90:true;
       loadChat().then(()=>{if(nearBottom)scrollChatToBottom()});
@@ -964,6 +992,7 @@ function watchChat(){
 }
 async function sendChat(){
   if(!S.user)return openAuth('login');
+  sendChatTyping(false);if(chatTypingStopTimer)clearTimeout(chatTypingStopTimer);
   const input=$('chat-input'),btn=$('chat-send'),body=(input?.value||'').trim(),file=$('chat-image')?.files?.[0],editing=chatEditId;
   if(!body&&!file&&!editing)return toast('Write a message or choose a photo.');
   if(body.length>1000)return toast('Messages are limited to 1000 characters.');
@@ -997,11 +1026,19 @@ async function sendChat(){
   }catch(e){toast(friendly(e))}
   finally{chatBusy=false;if($('chat-send')){$('chat-send').disabled=false;$('chat-send').textContent=chatEditId?'Save':'Send'}}
 }
-function replyChatMessage(id){
+function closeChatMenu(){const m=$('chat-context');if(m)m.hidden=true}
+function openChatMenu(id,x,y){
+  const msg=S.chatMessages.find(m=>m.id===id);if(!msg)return;
+  const menu=$('chat-context');if(!menu)return;
+  const mine=msg.user_id===S.user?.id,admin=!!(S.access&&S.access.is_admin);
+  menu.innerHTML=`<button type="button" data-act="chatReply" data-id="${esc(id)}">↩ Reply</button>${mine?`<button type="button" data-act="chatEdit" data-id="${esc(id)}">Edit message</button>`:''}${mine||admin?`<button type="button" data-act="chatDelete" data-id="${esc(id)}">Delete message</button>`:''}`;
+  menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-170))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';
+}
+function replyChatMessage(id){closeChatMenu();
   const msg=S.chatMessages.find(m=>m.id===id);if(!msg)return;
   chatReplyTo=id;chatEditId=null;renderChat();$('chat-input')?.focus();
 }
-function editChatMessage(id){
+function editChatMessage(id){closeChatMenu();
   const msg=S.chatMessages.find(m=>m.id===id);if(!msg||msg.user_id!==S.user.id)return toast('You can only edit your own messages.');
   chatEditId=id;chatReplyTo=null;renderChat();$('chat-input')?.focus();
 }
@@ -1009,7 +1046,7 @@ function jumpChatMessage(id){
   const el=$('chat-'+id);if(!el)return toast('Original message is not in the loaded chat history.');
   el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1200);
 }
-async function deleteChatMessage(id){
+async function deleteChatMessage(id){closeChatMenu();
   if(!S.user)return;
   const msg=S.chatMessages.find(m=>m.id===id);
   if(!msg||!(msg.user_id===S.user.id||(S.access&&S.access.is_admin)))return toast('You cannot delete that message.');
@@ -1741,9 +1778,20 @@ function adminAuditHtml(){
 
 /* Enter sends a chat message; Shift+Enter inserts a new line. */
 document.addEventListener('keydown',e=>{
-  if(e.target&&e.target.id==='chat-input'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
-    e.preventDefault();sendChat();
-  }
+  if(e.target&&e.target.id==='chat-input'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendChat();}
+  if(e.key==='Escape')closeChatMenu();
+});
+document.addEventListener('input',e=>{
+  if(!e.target||e.target.id!=='chat-input'||!chatChannel)return;
+  sendChatTyping(true);if(chatTypingStopTimer)clearTimeout(chatTypingStopTimer);
+  chatTypingStopTimer=setTimeout(()=>sendChatTyping(false),2200);
+});
+document.addEventListener('contextmenu',e=>{
+  const msg=e.target.closest('.chat-msg');if(!msg)return;
+  e.preventDefault();openChatMenu(msg.dataset.chatId,e.clientX,e.clientY);
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#chat-context')&&!e.target.closest('.chat-msg'))closeChatMenu();
 });
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
@@ -1753,13 +1801,21 @@ document.addEventListener('change',e=>{
 });
 let chatTouchStart=null;
 document.addEventListener('touchstart',e=>{
-  const msg=e.target.closest('.chat-msg');if(msg&&e.touches.length===1)chatTouchStart={id:msg.dataset.chatId,x:e.touches[0].clientX,y:e.touches[0].clientY};
+  const msg=e.target.closest('.chat-msg');if(msg&&e.touches.length===1){
+    chatTouchStart={id:msg.dataset.chatId,x:e.touches[0].clientX,y:e.touches[0].clientY};chatLongPressFired=false;
+    if(chatLongPressTimer)clearTimeout(chatLongPressTimer);
+    chatLongPressTimer=setTimeout(()=>{if(chatTouchStart){chatLongPressFired=true;openChatMenu(chatTouchStart.id,chatTouchStart.x,chatTouchStart.y)}},520);
+  }
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!chatTouchStart)return;const t=e.touches[0];if(Math.abs(t.clientX-chatTouchStart.x)>12||Math.abs(t.clientY-chatTouchStart.y)>12){if(chatLongPressTimer)clearTimeout(chatLongPressTimer)}
 },{passive:true});
 document.addEventListener('touchend',e=>{
-  if(!chatTouchStart)return;
-  const t=e.changedTouches[0],dx=t.clientX-chatTouchStart.x,dy=t.clientY-chatTouchStart.y,id=chatTouchStart.id;chatTouchStart=null;
-  if(dx>75&&Math.abs(dy)<55)replyChatMessage(id);
+  if(chatLongPressTimer)clearTimeout(chatLongPressTimer);if(!chatTouchStart)return;
+  const t=e.changedTouches[0],dx=t.clientX-chatTouchStart.x,dy=t.clientY-chatTouchStart.y,id=chatTouchStart.id,held=chatLongPressFired;chatTouchStart=null;
+  if(!held&&dx>75&&Math.abs(dy)<55)replyChatMessage(id);
 },{passive:true});
+document.addEventListener('touchcancel',()=>{if(chatLongPressTimer)clearTimeout(chatLongPressTimer);chatTouchStart=null},{passive:true});
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
   const push=e.target.closest('[data-push-toggle]');if(push){togglePhoneNotifications();return}
