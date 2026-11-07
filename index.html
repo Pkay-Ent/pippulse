@@ -1732,8 +1732,9 @@ ACT.paySubmit=async(_,btn)=>{
     let notice='Payment submitted. We will confirm it soon.';
     if(S.payMethod==='usdt'){
       const{data:verification,error:verificationError}=await sb.functions.invoke('verify-trc20',{body:{reference:ref}});
-      if(verificationError)throw verificationError;
-      if(verification&&verification.success){
+      if(verificationError){
+        notice='Your payment has been recorded. Blockchain verification is temporarily unavailable. You can check it again from your account.';
+      }else if(verification&&verification.success){
         notice='USDT payment confirmed. Your subscription is active.';
       }else if(verification&&verification.reason==='NOT_CONFIRMED'){
         notice='Your payment is recorded. TRON confirmation is still pending; we will check again shortly.';
