@@ -221,11 +221,13 @@ nav button.on .ico{filter:none}
 .chat-quote span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-mention{color:var(--gold);font-weight:700}
 .chat-image{display:block;max-width:100%;max-height:260px;border-radius:.65rem;margin-top:.5rem;object-fit:contain}
-.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:flex-end;gap:.5rem;padding:.65rem;background:rgba(19,26,38,.96);border:1px solid var(--line2);border-radius:1rem;backdrop-filter:blur(12px)}
-.chat-attach{flex:none;width:2.35rem;height:2.35rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
-.chat-attach:hover{background:var(--s2);color:var(--gold)}
-.chat-attach svg{width:1.35rem;height:1.35rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.chat-compose textarea{flex:1;min-width:0;min-height:2.8rem;max-height:7rem;resize:vertical;background:var(--s2);border:1px solid var(--line);border-radius:1.15rem;padding:.7rem;color:var(--tx);font:inherit;font-size:.9rem}
+.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:center;gap:.55rem;padding:.55rem;background:rgba(19,26,38,.96);border:1px solid var(--line2);border-radius:1rem;backdrop-filter:blur(12px)}
+.chat-input-shell{flex:1;min-width:0;display:flex;align-items:center;gap:.25rem;min-height:2.65rem;padding:.15rem .45rem;background:var(--s2);border:1px solid var(--line);border-radius:1.2rem}
+.chat-attach{flex:none;width:2.1rem;height:2.1rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
+.chat-attach:hover{background:var(--s1);color:var(--gold)}
+.chat-attach svg{width:1.2rem;height:1.2rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chat-compose textarea{flex:1;min-width:0;min-height:2.2rem;height:2.2rem;max-height:5rem;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;border-radius:0;padding:.48rem .35rem;color:var(--tx);font:inherit;font-size:.88rem;line-height:1.25}
+.chat-compose textarea:focus{outline:0;box-shadow:none}
 .chat-compose .btn{width:2.8rem;height:2.8rem;flex:none;margin:0;padding:0;border-radius:50%}
 .chat-compose .btn.gold::after{display:none;animation:none}
 .chat-compose .btn svg{width:1.25rem;height:1.25rem;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -1046,8 +1048,11 @@ function renderChat(){
       ${editMsg?`<div class="chat-quote"><b>Editing your message</b><span>You can change the text below.</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:replyMsg?`<div class="chat-quote"><b>↪ Replying to ${esc(replyMsg.author_name)}</b><span>${esc(replyMsg.body||'Photo')}</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:''}
       <div class="chat-typing" id="chat-typing" aria-live="polite"></div>
       <form class="chat-compose" id="chat-form" onsubmit="return false">
-        <label class="chat-attach" for="chat-image" aria-label="Attach a photo" title="Attach a photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-        <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
+        <div class="chat-input-shell">
+          <label class="chat-attach" for="chat-image" aria-label="Attach a photo" title="Attach a photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label>
+          <input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <textarea id="chat-input" maxlength="1000" rows="1" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
+        </div>
         <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 24 24" aria-hidden="true">${editMsg?'<path d="m5 12 4 4L19 6"/>':'<path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/>'}</svg></button>
       </form>
       <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
@@ -1065,9 +1070,10 @@ async function loadChat({silent=false,keepPosition=false}={}){
   const selectionStart=inputBefore?.selectionStart??null,selectionEnd=inputBefore?.selectionEnd??null;
   if(!silent){S.chatLoading=true;renderChat()}
   try{
-    const{data,error}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at,updated_at,reply_to_id,image_path').order('created_at',{ascending:true}).limit(150);
+    const{data,error}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at,updated_at,reply_to_id,image_path').order('created_at',{ascending:false}).limit(150);
     if(error)throw error;
-    S.chatMessages=data||[];
+    /* Fetch the newest messages first, then reverse for chronological display. */
+    S.chatMessages=(data||[]).reverse();
     await Promise.all(S.chatMessages.map(async m=>{
       if(m.image_path){
         const{data:u,error:ie}=await sb.storage.from('community-chat-images').createSignedUrl(m.image_path,3600);
