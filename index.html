@@ -959,6 +959,7 @@ function renderChat(){
       <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
     </div>
     <div class="chat-context" id="chat-context" hidden></div>`;
+  updateChatTyping();
 }
 async function loadChat(){
   if(!S.user)return;
