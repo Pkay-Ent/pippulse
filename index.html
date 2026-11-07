@@ -703,7 +703,10 @@ document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));syncLock()}});
 const VIEWS=['signals','plans','chat','account'];
 function show(v){
+  if(!VIEWS.includes(v))return;
   if(v==='chat'&&!S.user){openAuth('login');return}
+  /* Update the pre-paint selector as well as the normal hidden states. */
+  document.documentElement.setAttribute('data-start-view',v);
   try{localStorage.setItem('pippulse_last_view',v)}catch(e){}
   $('v-admin').hidden=true;
   if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat()}
