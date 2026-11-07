@@ -1025,6 +1025,11 @@ function chatQuoteHtml(msg){
 }
 function renderChat(){
   const root=$('v-chat');if(!root)return;
+  /* Preserve the chat's own scroll position whenever the chat DOM is rebuilt.
+     A fresh chat view (or a user already at the bottom) should show the newest post. */
+  const previousFeed=$('chat-feed');
+  const previousScrollTop=previousFeed?.scrollTop||0;
+  const previousWasNearBottom=previousFeed?previousFeed.scrollHeight-previousFeed.scrollTop-previousFeed.clientHeight<120:true;
   if(!S.user){
     root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Connect with other PipPulse members.</p></div></div><div class="card"><p class="mut">Sign in to join the conversation.</p><button class="btn gold" onclick="openAuth('login')">Log in</button><button class="btn" onclick="openAuth('signup')">Create account</button></div>`;
     return;
@@ -1061,6 +1066,12 @@ function renderChat(){
     </div>
     <div class="chat-context" id="chat-context" hidden></div>`;
   updateChatTyping();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const feed=$('chat-feed');
+    if(!feed)return;
+    if(!previousFeed||previousWasNearBottom)feed.scrollTop=feed.scrollHeight;
+    else feed.scrollTop=Math.min(previousScrollTop,Math.max(0,feed.scrollHeight-feed.clientHeight));
+  }));
 }
 async function loadChat({silent=false,keepPosition=false}={}){
   if(!S.user)return;
