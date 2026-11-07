@@ -1011,6 +1011,10 @@ async function deleteChatMessage(id){
   if(!msg||!(msg.user_id===S.user.id||(S.access&&S.access.is_admin)))return toast('You cannot delete that message.');
   if(!confirm('Delete this chat message?'))return;
   try{
+    if(msg.image_path){
+      const{error:imageError}=await sb.storage.from('community-chat-images').remove([msg.image_path]);
+      if(imageError)console.warn('Could not remove chat image:',imageError.message);
+    }
     const{error}=await sb.from('community_chat_messages').delete().eq('id',id);
     if(error)throw error;
     S.chatMessages=S.chatMessages.filter(m=>m.id!==id);renderChat();toast('Message deleted.');
