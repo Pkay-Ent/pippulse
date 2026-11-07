@@ -221,17 +221,19 @@ nav button.on .ico{filter:none}
 .chat-quote span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-mention{color:var(--gold);font-weight:700}
 .chat-image{display:block;max-width:100%;max-height:260px;border-radius:.65rem;margin-top:.5rem;object-fit:contain}
-.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:center;gap:.55rem;padding:.55rem;background:rgba(19,26,38,.96);border:1px solid var(--line2);border-radius:1rem;backdrop-filter:blur(12px)}
-.chat-input-shell{flex:1;min-width:0;display:flex;align-items:center;gap:.25rem;min-height:2.65rem;padding:.15rem .45rem;background:var(--s2);border:1px solid var(--line);border-radius:1.2rem}
-.chat-attach{flex:none;width:2.1rem;height:2.1rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
+.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:center;gap:.4rem;padding:.3rem .4rem;background:rgba(19,26,38,.97);border:1px solid var(--line2);border-radius:1.25rem;backdrop-filter:blur(12px)}
+.chat-input-shell{flex:1;min-width:0;display:flex;align-items:center;gap:.15rem;min-height:2.25rem;padding:.08rem .3rem;background:var(--s2);border:1px solid var(--line);border-radius:1.2rem}
+.chat-attach{flex:none;width:1.85rem;height:1.85rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
 .chat-attach:hover{background:var(--s1);color:var(--gold)}
-.chat-attach svg{width:1.2rem;height:1.2rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.chat-compose textarea{flex:1;min-width:0;min-height:2.2rem;height:2.2rem;max-height:5rem;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;border-radius:0;padding:.48rem .35rem;color:var(--tx);font:inherit;font-size:.88rem;line-height:1.25}
+.chat-attach svg{width:1.08rem;height:1.08rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chat-compose textarea{flex:1;min-width:0;min-height:1.85rem;height:1.85rem;max-height:4rem;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;border-radius:0;padding:.35rem .25rem;color:var(--tx);font:inherit;font-size:.86rem;line-height:1.2}
 .chat-compose textarea:focus{outline:0;box-shadow:none}
-.chat-compose .btn{width:2.8rem;height:2.8rem;flex:none;margin:0;padding:0;border-radius:50%}
+.chat-compose .btn{width:2.3rem;height:2.3rem;min-width:2.3rem;flex:none;margin:0;padding:0;border-radius:50%;display:grid;place-items:center;perspective:100px}
 .chat-compose .btn.gold::after{display:none;animation:none}
-.chat-compose .btn svg{width:1.25rem;height:1.25rem;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chat-compose .btn svg{width:1.55rem;height:1.55rem;display:block;overflow:visible;filter:drop-shadow(0 2px 1px rgba(0,0,0,.35));animation:pippulse-send-float 2.4s ease-in-out infinite}
+.chat-compose .btn:active svg{transform:translate3d(1px,2px,0) rotate(8deg) scale(.88);animation:none}
 .chat-compose .btn:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@keyframes pippulse-send-float{0%,100%{transform:translate3d(0,0,0) rotateY(-9deg) rotateX(5deg)}50%{transform:translate3d(0,-2px,2px) rotateY(9deg) rotateX(-4deg)}}
 .chat-status{color:var(--mut);font-size:.75rem;margin:0 .2rem}
 
 /* Premium Access */
@@ -1053,7 +1055,7 @@ function renderChat(){
           <input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
           <textarea id="chat-input" maxlength="1000" rows="1" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
         </div>
-        <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 24 24" aria-hidden="true">${editMsg?'<path d="m5 12 4 4L19 6"/>':'<path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/>'}</svg></button>
+        <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 32 32" aria-hidden="true">${editMsg?'<path d="m7 17 6 6L27 9" fill="none" stroke="#5c3900" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"/><path d="m7 15 6 6L27 7" fill="none" stroke="#ffd45c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>':'<defs><linearGradient id="sendGold" x1="4" y1="3" x2="28" y2="29"><stop stop-color="#fff2b0"/><stop offset=".42" stop-color="#ffd45c"/><stop offset="1" stop-color="#d58a13"/></linearGradient><linearGradient id="sendSide" x1="8" y1="8" x2="25" y2="28"><stop stop-color="#b86c08"/><stop offset="1" stop-color="#704006"/></linearGradient></defs><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendSide)" transform="translate(1 2)"/><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendGold)" stroke="#fff0b0" stroke-width="1.1" stroke-linejoin="round"/><path d="m6 19 22-16-15 14" fill="none" stroke="#fff9d8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m13 17 2 6 4-10" fill="#e7a52c" stroke="#b96f08" stroke-width=".8" stroke-linejoin="round"/>'}</svg></button>
       </form>
       <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
     </div>
