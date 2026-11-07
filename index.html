@@ -226,7 +226,10 @@ nav button.on .ico{filter:none}
 .chat-attach:hover{background:var(--s2);color:var(--gold)}
 .chat-attach svg{width:1.35rem;height:1.35rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .chat-compose textarea{flex:1;min-width:0;min-height:2.8rem;max-height:7rem;resize:vertical;background:var(--s2);border:1px solid var(--line);border-radius:1.15rem;padding:.7rem;color:var(--tx);font:inherit;font-size:.9rem}
-.chat-compose .btn{width:auto;flex:none;margin:0;padding:.75rem .9rem}
+.chat-compose .btn{width:2.8rem;height:2.8rem;flex:none;margin:0;padding:0;border-radius:50%}
+.chat-compose .btn.gold::after{display:none;animation:none}
+.chat-compose .btn svg{width:1.25rem;height:1.25rem;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chat-compose .btn:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .chat-status{color:var(--mut);font-size:.75rem;margin:0 .2rem}
 
 /* Premium Access */
@@ -684,7 +687,7 @@ function toggleNotificationSound(){
   if(notificationSoundEnabled)playNotificationSound();
   renderNotifications();
 }
-let chatReplyTo=null,chatEditId=null,chatTypingTimer=null,chatTypingStopTimer=null,chatLongPressTimer=null,chatLongPressFired=false;
+let chatReplyTo=null,chatEditId=null,chatTypingTimer=null,chatTypingStopTimer=null,chatLongPressTimer=null,chatLongPressFired=false,chatRefreshTimer=null;
 const chatTypingUsers=new Map();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -988,17 +991,20 @@ function updateChatTyping(){
 }
 function sendChatTyping(isTyping){
   chatIsTyping=!!isTyping;
-  if(!chatChannel||!S.user)return;
-  if(!chatChannelReady)return;
+  if(!chatChannel||!S.user||!chatChannelReady)return;
   chatChannel.send({type:'broadcast',event:'typing',payload:{user_id:S.user.id,name:chatName(),typing:chatIsTyping}}).catch(()=>{});
 }
 function handleChatTyping(payload){
   if(!payload||!payload.user_id||payload.user_id===S.user?.id)return;
-  if(payload.typing){chatTypingUsers.set(payload.user_id,{user_id:payload.user_id,name:payload.name||'A member'});}
-  else chatTypingUsers.delete(payload.user_id);
-  updateChatTyping();
-  const old=chatTypingUsers.get(payload.user_id);
-  if(payload.typing)setTimeout(()=>{const now=chatTypingUsers.get(payload.user_id);if(now===old){chatTypingUsers.delete(payload.user_id);updateChatTyping()}},4500);
+  if(payload.typing){
+    const entry={user_id:payload.user_id,name:payload.name||'A member'};
+    chatTypingUsers.set(payload.user_id,entry);
+    updateChatTyping();
+    setTimeout(()=>{if(chatTypingUsers.get(payload.user_id)===entry){chatTypingUsers.delete(payload.user_id);updateChatTyping()}},3000);
+  }else{
+    chatTypingUsers.delete(payload.user_id);
+    updateChatTyping();
+  }
 }
 function chatText(value){
   return esc(value).replace(/(^|\\s)@([a-zA-Z0-9_]{2,30})/g,'$1<span class="chat-mention">@$2</span>');
@@ -1038,16 +1044,22 @@ function renderChat(){
       <form class="chat-compose" id="chat-form" onsubmit="return false">
         <label class="chat-attach" for="chat-image" aria-label="Attach a photo" title="Attach a photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
         <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
-        <button class="btn gold" id="chat-send" type="button" data-act="chatSend">${editMsg?'Save':'Send'}</button>
+        <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 24 24" aria-hidden="true">${editMsg?'<path d="m5 12 4 4L19 6"/>':'<path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/>'}</svg></button>
       </form>
       <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
     </div>
     <div class="chat-context" id="chat-context" hidden></div>`;
   updateChatTyping();
 }
-async function loadChat(){
+async function loadChat({silent=false,keepPosition=false}={}){
   if(!S.user)return;
-  S.chatLoading=true;renderChat();
+  const feedBefore=$('chat-feed');
+  const oldScroll=feedBefore?.scrollTop||0;
+  const wasNearBottom=feedBefore?feedBefore.scrollHeight-feedBefore.scrollTop-feedBefore.clientHeight<90:true;
+  const focused=document.activeElement?.id==='chat-input';
+  const inputBefore=$('chat-input');
+  const selectionStart=inputBefore?.selectionStart??null,selectionEnd=inputBefore?.selectionEnd??null;
+  if(!silent){S.chatLoading=true;renderChat()}
   try{
     const{data,error}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at,updated_at,reply_to_id,image_path').order('created_at',{ascending:true}).limit(150);
     if(error)throw error;
@@ -1058,8 +1070,23 @@ async function loadChat(){
         m.image_url=!ie&&u?u.signedUrl:null;
       }
     }));
-  }catch(e){S.chatMessages=[];toast('Could not load chat: '+friendly(e))}
-  S.chatLoading=false;renderChat();scrollChatToBottom();
+    S.chatLoading=false;renderChat();
+    const nextFeed=$('chat-feed');
+    if(nextFeed){
+      if(!keepPosition||wasNearBottom)nextFeed.scrollTop=nextFeed.scrollHeight;
+      else nextFeed.scrollTop=oldScroll;
+    }
+    if(focused){
+      const nextInput=$('chat-input');
+      nextInput?.focus({preventScroll:true});
+      if(nextInput&&selectionStart!==null)nextInput.setSelectionRange(selectionStart,selectionEnd);
+    }
+    updateChatTyping();
+  }catch(e){
+    S.chatLoading=false;
+    if(!S.chatMessages.length)renderChat();
+    toast('Could not load chat: '+friendly(e));
+  }
 }
 function scrollChatToBottom(){
   const el=$('chat-feed');if(el)el.scrollTop=el.scrollHeight;
@@ -1072,8 +1099,8 @@ function watchChat(){
   chatChannel=sb.channel('community-chat-live',{config:{broadcast:{self:false}}})
     .on('broadcast',{event:'typing'},({payload})=>handleChatTyping(payload))
     .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_messages'},()=>{
-      const feed=$('chat-feed'),nearBottom=feed?feed.scrollHeight-feed.scrollTop-feed.clientHeight<90:true;
-      loadChat().then(()=>{if(nearBottom)scrollChatToBottom()});
+      if(chatRefreshTimer)clearTimeout(chatRefreshTimer);
+      chatRefreshTimer=setTimeout(()=>loadChat({silent:true,keepPosition:true}),120);
     }).subscribe(status=>{
       chatChannelReady=status==='SUBSCRIBED';
       if(chatChannelReady&&chatIsTyping)sendChatTyping(true);
@@ -1087,7 +1114,7 @@ async function sendChat(){
   if(body.length>1000)return toast('Messages are limited to 1000 characters.');
   if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5242880))return toast('Choose a PNG, JPG or WebP image up to 5 MB.');
   if(chatBusy)return;
-  chatBusy=true;if(btn){btn.disabled=true;btn.textContent=editing?'Saving…':'Sending…'}
+  chatBusy=true;if(btn){btn.disabled=true;btn.setAttribute('aria-label',editing?'Saving message':'Sending message')}
   let uploadedPath=null;
   try{
     if(editing){
@@ -1109,13 +1136,13 @@ async function sendChat(){
         if(uploadedPath)await sb.storage.from('community-chat-images').remove([uploadedPath]);
         throw error;
       }
-      chatReplyTo=null;toast('Message sent.');
+      chatReplyTo=null;/* The new message is visible in the chat; no success toast is needed. */
     }
     if(input)input.value='';
     const imageInput=$('chat-image');if(imageInput)imageInput.value='';
-    await loadChat();scrollChatToBottom();
+    await loadChat({silent:true});
   }catch(e){toast(friendly(e))}
-  finally{chatBusy=false;if($('chat-send')){$('chat-send').disabled=false;$('chat-send').textContent=chatEditId?'Save':'Send'}}
+  finally{chatBusy=false;const send=$('chat-send');if(send){send.disabled=false;send.setAttribute('aria-label',chatEditId?'Save message':'Send message');send.title=chatEditId?'Save message':'Send message'}}
 }
 function closeChatMenu(){const m=$('chat-context');if(m)m.hidden=true}
 function openChatMenu(id,x,y){
