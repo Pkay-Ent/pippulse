@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0B0F17">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="color-scheme" content="dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://okuotuehtvsxtibjgjsi.supabase.co; connect-src 'self' https://okuotuehtvsxtibjgjsi.supabase.co wss://okuotuehtvsxtibjgjsi.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
@@ -763,6 +764,57 @@ function renderBadge(){
 }
 
 function notificationEligible(){return !!S.user}
+const PUSH_PUBLIC_KEY = "BJMViLuMWzZg5Ly3gHAzgpDWruAx4vVNCE882VJBV83GgvtuxLm7rzplju5SlTwIT8fpYTtmw4xvkWZMhKJB6vM";
+let pushRegistration = null;
+function pushSupported(){
+  return !!(window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
+}
+function urlBase64ToUint8Array(value){
+  const pad="=".repeat((4-value.length%4)%4);
+  const raw=atob((value+pad).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function getPushRegistration(){
+  if(!pushSupported())throw new Error("Push notifications are not supported by this browser. On iPhone, add PipPulse to your Home Screen and open it there.");
+  if(!pushRegistration)pushRegistration=await navigator.serviceWorker.register("/sw.js",{scope:"/"});
+  return pushRegistration;
+}
+async function setPushSubscription(){
+  if(!S.user)return toast("Sign in to enable phone notifications.");
+  try{
+    const reg=await getPushRegistration();
+    const permission=await Notification.requestPermission();
+    if(permission!=="granted")throw new Error("Notification permission was not granted. Check your browser or phone settings.");
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(PUSH_PUBLIC_KEY)});
+    const{data:{session}}=await sb.auth.getSession();
+    const response=await fetch(SB_URL+"/functions/v1/send-signal-push",{
+      method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+session.access_token},
+      body:JSON.stringify({action:"subscribe",subscription:sub.toJSON()})
+    });
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error||"Could not save this device.");
+    toast("Phone notifications enabled on this device.");renderNotifications();
+  }catch(e){toast(e.message||"Could not enable phone notifications.");}
+}
+async function disablePushSubscription(){
+  try{
+    const reg=await getPushRegistration(),sub=await reg.pushManager.getSubscription();
+    if(!sub)return;
+    const{data:{session}}=await sb.auth.getSession();
+    const response=await fetch(SB_URL+"/functions/v1/send-signal-push",{
+      method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+session.access_token},
+      body:JSON.stringify({action:"unsubscribe",endpoint:sub.endpoint})
+    });
+    const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not disable phone alerts.");
+    await sub.unsubscribe();toast("Phone notifications disabled on this device.");renderNotifications();
+  }catch(e){toast(e.message||"Could not disable phone notifications.");}
+}
+async function togglePhoneNotifications(){
+  if(!pushSupported())return toast("This browser/device does not support web push. On iPhone, add PipPulse to your Home Screen first.");
+  const reg=await getPushRegistration(),sub=await reg.pushManager.getSubscription();
+  if(sub)await disablePushSubscription();else await setPushSubscription();
+}
 function renderNotifications(){
   const btn=$('notif-btn'),panel=$('notif-panel');if(!btn||!panel)return;
   const allowed=notificationEligible();btn.hidden=!allowed;
@@ -771,7 +823,7 @@ function renderNotifications(){
   btn.innerHTML='<svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>'+(unread?'<span class="ncount">'+(unread>99?'99+':unread)+'</span>':'');
   btn.setAttribute('aria-label',unread?'Notifications, '+unread+' unread':'Notifications');
   panel.hidden=!S.notificationOpen;
-  panel.innerHTML='<div class="notif-head"><b>Signal notifications</b><small>'+unread+' unread</small></div>'+(S.notifications.length?S.notifications.map(n=>{
+  panel.innerHTML='<div class="notif-head"><b>Signal notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable phone alerts</button><small>Receive a phone alert when a new signal is published.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
     const isNew=!S.notificationReads.has(n.id);
     return '<button class="notif-item '+(isNew?'unread':'')+'" data-notification="'+esc(n.id)+'"><b>'+esc(n.title)+'</b><small>'+esc(n.body)+'</small><time>'+esc(new Date(n.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))+'</time></button>';
   }).join(''):'<div class="notif-empty">No signal notifications yet. New alerts will appear here when a signal is published.</div>');
@@ -1624,6 +1676,7 @@ document.addEventListener('keydown',e=>{
 });
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
+  const push=e.target.closest('[data-push-toggle]');if(push){togglePhoneNotifications();return}
   const note=e.target.closest('[data-notification]');if(note){openNotification(note.dataset.notification);return}
   const u=e.target.closest('[data-unlock]');if(u)return unlock(u.dataset.unlock,u);
   const c=e.target.closest('[data-copy]');if(c)copySig(c.dataset.copy);
