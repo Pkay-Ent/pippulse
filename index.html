@@ -740,6 +740,10 @@ function show(v){
   if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat()}
   VIEWS.forEach((x,i)=>{const on=x===v;$('v-'+x).hidden=!on;$('n-'+x).classList.toggle('on',on);if(on){$('ind').style.setProperty('--ix',i);if(x!=='signals'){const el=$('v-'+x);el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}}});
   scrollTo({top:0});
+  /* Opening chat should always land on the newest messages, not the archive. */
+  if(v==='chat'&&S.user){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>scrollChatToBottom()));
+  }
 }
 function setHL(t){$('hl').innerHTML=String(t).split(/\s+/).filter(Boolean).map((w,i)=>`<span style="--w:${i}">${esc(w)}</span>`).join(' ')}
 
