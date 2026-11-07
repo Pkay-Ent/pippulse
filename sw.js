@@ -2,6 +2,7 @@
 self.addEventListener("push", event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
+
   const title = String(data.title || "PipPulse Gold Signals").slice(0, 80);
   const options = {
     body: String(data.body || "A new trading signal is available. Open PipPulse to view it.").slice(0, 180),
@@ -9,10 +10,14 @@ self.addEventListener("push", event => {
     badge: "/icon-192.png",
     tag: data.tag || "pippulse-signal",
     renotify: true,
+    silent: false,
+    vibrate: [200, 100, 200],
     data: { url: data.url || "/" }
   };
+
   event.waitUntil(self.registration.showNotification(title, options));
 });
+
 self.addEventListener("notificationclick", event => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || "/", self.location.origin).href;
