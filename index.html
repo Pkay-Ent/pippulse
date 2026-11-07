@@ -207,7 +207,14 @@ nav button.on .ico{filter:none}
 .chat-msg.mine{align-self:flex-end;background:rgba(245,192,66,.09);border-color:rgba(245,192,66,.22);border-radius:.9rem .9rem .25rem .9rem}
 .chat-meta{display:flex;align-items:center;gap:.45rem;margin-bottom:.25rem;font-size:.72rem;color:var(--tx2)}
 .chat-meta b{color:var(--gold);font-size:.78rem}.chat-msg p{margin:0;white-space:pre-wrap;font-size:.9rem;line-height:1.45}
-.chat-delete{border:0;background:none;color:var(--mut);font:inherit;font-size:.72rem;cursor:pointer;margin-left:auto;padding:0 .1rem}
+.chat-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.45rem}
+.chat-action{border:0;background:transparent;color:var(--tx2);font:inherit;font-size:.72rem;padding:.15rem .2rem;cursor:pointer}
+.chat-action:hover{color:var(--gold)}
+.chat-quote{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--gold);border-radius:.35rem;background:rgba(245,192,66,.08);color:var(--tx2);padding:.45rem .55rem;margin:0 0 .5rem;cursor:pointer;font:inherit;font-size:.75rem;overflow:hidden}
+.chat-quote b{display:block;color:var(--gold);font-size:.72rem;margin-bottom:.12rem}
+.chat-quote span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-mention{color:var(--gold);font-weight:700}
+.chat-image{display:block;max-width:100%;max-height:260px;border-radius:.65rem;margin-top:.5rem;object-fit:contain}
 .chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:flex-end;gap:.5rem;padding:.65rem;background:rgba(19,26,38,.96);border:1px solid var(--line2);border-radius:1rem;backdrop-filter:blur(12px)}
 .chat-compose textarea{flex:1;min-width:0;min-height:2.8rem;max-height:7rem;resize:vertical;background:var(--s2);border:1px solid var(--line);border-radius:.7rem;padding:.7rem;color:var(--tx);font:inherit;font-size:.9rem}
 .chat-compose .btn{width:auto;flex:none;margin:0;padding:.75rem .9rem}
@@ -608,6 +615,7 @@ const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false};
 let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false;
+let chatReplyTo=null,chatEditId=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f2=n=>Number(n).toFixed(2);
@@ -879,6 +887,15 @@ function chatName(){
   const p=S.profile||{};
   return p.username?'@'+p.username:(p.display_name||'PipPulse member');
 }
+function chatText(value){
+  return esc(value).replace(/(^|\\s)@([a-zA-Z0-9_]{2,30})/g,'$1<span class="chat-mention">@$2</span>');
+}
+function chatQuoteHtml(msg){
+  if(!msg||!msg.reply_to_id)return '';
+  const parent=S.chatMessages.find(x=>x.id===msg.reply_to_id);
+  if(!parent)return '';
+  return `<button class="chat-quote" data-act="chatJump" data-id="${esc(parent.id)}"><b>↪ Replying to ${esc(parent.author_name||'member')}</b><span>${esc(parent.body||'Photo')}</span></button>`;
+}
 function renderChat(){
   const root=$('v-chat');if(!root)return;
   if(!S.user){
@@ -887,27 +904,44 @@ function renderChat(){
   }
   const messages=S.chatMessages||[];
   const draft=$('chat-input')?.value||'';
+  const editMsg=chatEditId?messages.find(m=>m.id===chatEditId):null;
+  const replyMsg=chatReplyTo?messages.find(m=>m.id===chatReplyTo):null;
+  const composerText=editMsg?editMsg.body:draft;
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
-    <p class="chat-intro">Keep conversations respectful. Do not share passwords, private payment details or personal information.</p>
+    <p class="chat-intro">Keep conversations respectful. Mention members with @username. Share trading screenshots responsibly.</p>
     <div class="chat-wrap">
       <div class="chat-feed" id="chat-feed" aria-live="polite">${S.chatLoading?'<div class="empty">Loading conversation…</div>':messages.length?messages.map(m=>{
-        const mine=m.user_id===S.user.id,canDelete=mine||!!(S.access&&S.access.is_admin);
-        return `<article class="chat-msg ${mine?'mine':''}"><div class="chat-meta"><b>${esc(m.author_name||'PipPulse member')}</b><time>${esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</time>${canDelete?`<button class="chat-delete" data-act="chatDelete" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:''}</div><p>${esc(m.body)}</p></article>`;
+        const mine=m.user_id===S.user.id,canDelete=mine||!!(S.access&&S.access.is_admin),canEdit=mine;
+        return `<article class="chat-msg ${mine?'mine':''}" id="chat-${esc(m.id)}" data-chat-id="${esc(m.id)}">
+          ${chatQuoteHtml(m)}
+          <div class="chat-meta"><b>${esc(m.author_name||'PipPulse member')}</b><time>${esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))}</time>${m.updated_at?'<small>edited</small>':''}</div>
+          ${m.body?`<p>${chatText(m.body)}</p>`:''}
+          ${m.image_url?`<a href="${esc(m.image_url)}" target="_blank" rel="noopener noreferrer"><img class="chat-image" src="${esc(m.image_url)}" alt="Shared chat image" loading="lazy"></a>`:''}
+          <div class="chat-actions"><button class="chat-action" data-act="chatReply" data-id="${esc(m.id)}">↩ Reply</button>${canEdit?`<button class="chat-action" data-act="chatEdit" data-id="${esc(m.id)}">Edit</button>`:''}${canDelete?`<button class="chat-action" data-act="chatDelete" data-id="${esc(m.id)}">Delete</button>`:''}</div>
+        </article>`;
       }).join(''):'<div class="empty">No messages yet. Start the conversation.</div>'}</div>
+      ${editMsg?`<div class="chat-quote"><b>Editing your message</b><span>You can change the text below.</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:replyMsg?`<div class="chat-quote"><b>↪ Replying to ${esc(replyMsg.author_name)}</b><span>${esc(replyMsg.body||'Photo')}</span><button type="button" class="chat-action" data-act="chatCancel">Cancel</button></div>`:''}
       <form class="chat-compose" id="chat-form" onsubmit="return false">
-        <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message…" aria-label="Write a chat message">${esc(draft)}</textarea>
-        <button class="btn gold" id="chat-send" type="button" data-act="chatSend">Send</button>
+        <label class="chat-action" for="chat-image">＋ Photo</label><input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        <textarea id="chat-input" maxlength="1000" rows="2" placeholder="Write a message… use @username" aria-label="Write a chat message">${esc(composerText)}</textarea>
+        <button class="btn gold" id="chat-send" type="button" data-act="chatSend">${editMsg?'Save':'Send'}</button>
       </form>
-      <p class="chat-status">Messages are visible to signed-in members. Please be respectful.</p>
+      <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
     </div>`;
 }
 async function loadChat(){
   if(!S.user)return;
   S.chatLoading=true;renderChat();
   try{
-    const{data,error}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at').order('created_at',{ascending:true}).limit(100);
+    const{data,error}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at,updated_at,reply_to_id,image_path').order('created_at',{ascending:true}).limit(150);
     if(error)throw error;
     S.chatMessages=data||[];
+    await Promise.all(S.chatMessages.map(async m=>{
+      if(m.image_path){
+        const{data:u,error:ie}=await sb.storage.from('community-chat-images').createSignedUrl(m.image_path,3600);
+        m.image_url=!ie&&u?u.signedUrl:null;
+      }
+    }));
   }catch(e){S.chatMessages=[];toast('Could not load chat: '+friendly(e))}
   S.chatLoading=false;renderChat();scrollChatToBottom();
 }
@@ -919,31 +953,57 @@ function watchChat(){
   if(chatChannel&&chatUserId===S.user.id)return;
   stopChat();chatUserId=S.user.id;
   chatChannel=sb.channel('community-chat-'+S.user.id)
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'community_chat_messages'},payload=>{
-      if(!S.chatMessages.some(m=>m.id===payload.new.id)){
-        S.chatMessages=[...S.chatMessages,payload.new].slice(-100);
-        if(!$('v-chat').hidden)renderChat(),scrollChatToBottom();
-      }
-    })
-    .on('postgres_changes',{event:'DELETE',schema:'public',table:'community_chat_messages'},payload=>{
-      S.chatMessages=S.chatMessages.filter(m=>m.id!==payload.old.id);
-      if(!$('v-chat').hidden)renderChat();
+    .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_messages'},()=>{
+      const feed=$('chat-feed'),nearBottom=feed?feed.scrollHeight-feed.scrollTop-feed.clientHeight<90:true;
+      loadChat().then(()=>{if(nearBottom)scrollChatToBottom()});
     }).subscribe();
 }
 async function sendChat(){
   if(!S.user)return openAuth('login');
-  const input=$('chat-input'),btn=$('chat-send'),body=(input?.value||'').trim();
-  if(!body)return toast('Write a message first.');
+  const input=$('chat-input'),btn=$('chat-send'),body=(input?.value||'').trim(),file=$('chat-image')?.files?.[0],editing=chatEditId;
+  if(!body&&!file&&!editing)return toast('Write a message or choose a photo.');
   if(body.length>1000)return toast('Messages are limited to 1000 characters.');
+  if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5242880))return toast('Choose a PNG, JPG or WebP image up to 5 MB.');
   if(chatBusy)return;
-  chatBusy=true;if(btn){btn.disabled=true;btn.textContent='Sending…'}
+  chatBusy=true;if(btn){btn.disabled=true;btn.textContent=editing?'Saving…':'Sending…'}
+  let uploadedPath=null;
   try{
-    const{error}=await sb.from('community_chat_messages').insert({user_id:S.user.id,body});
-    if(error)throw error;
-    if(input)input.value='';
-    toast('Message sent.');
+    if(editing){
+      const{error}=await sb.from('community_chat_messages').update({body}).eq('id',editing).eq('user_id',S.user.id);
+      if(error)throw error;
+      chatEditId=null;chatReplyTo=null;
+      toast('Message updated.');
+    }else{
+      if(file){
+        const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];
+        uploadedPath=S.user.id+'/'+crypto.randomUUID()+'.'+ext;
+        const up=await sb.storage.from('community-chat-images').upload(uploadedPath,file,{contentType:file.type,upsert:false});
+        if(up.error)throw up.error;
+      }
+      const{error}=await sb.from('community_chat_messages').insert({
+        user_id:S.user.id,body,reply_to_id:chatReplyTo||null,image_path:uploadedPath
+      });
+      if(error){
+        if(uploadedPath)await sb.storage.from('community-chat-images').remove([uploadedPath]);
+        throw error;
+      }
+      chatReplyTo=null;toast('Message sent.');
+    }
+    await loadChat();scrollChatToBottom();
   }catch(e){toast(friendly(e))}
-  finally{chatBusy=false;if($('chat-send')){$('chat-send').disabled=false;$('chat-send').textContent='Send'}}
+  finally{chatBusy=false;if($('chat-send')){$('chat-send').disabled=false;$('chat-send').textContent=chatEditId?'Save':'Send'}}
+}
+function replyChatMessage(id){
+  const msg=S.chatMessages.find(m=>m.id===id);if(!msg)return;
+  chatReplyTo=id;chatEditId=null;renderChat();$('chat-input')?.focus();
+}
+function editChatMessage(id){
+  const msg=S.chatMessages.find(m=>m.id===id);if(!msg||msg.user_id!==S.user.id)return toast('You can only edit your own messages.');
+  chatEditId=id;chatReplyTo=null;renderChat();$('chat-input')?.focus();
+}
+function jumpChatMessage(id){
+  const el=$('chat-'+id);if(!el)return toast('Original message is not in the loaded chat history.');
+  el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1200);
 }
 async function deleteChatMessage(id){
   if(!S.user)return;
@@ -956,7 +1016,6 @@ async function deleteChatMessage(id){
     S.chatMessages=S.chatMessages.filter(m=>m.id!==id);renderChat();toast('Message deleted.');
   }catch(e){toast('Could not delete message: '+friendly(e))}
 }
-
 function handleBadgeClick(){
   if(S.user){
     show('account');
@@ -1253,6 +1312,10 @@ S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},msg:''};
 ACT.closeSheet=id=>closeSheet(id);
 ACT.chatSend=()=>sendChat();
 ACT.chatDelete=id=>deleteChatMessage(id);
+ACT.chatReply=id=>replyChatMessage(id);
+ACT.chatEdit=id=>editChatMessage(id);
+ACT.chatJump=id=>jumpChatMessage(id);
+ACT.chatCancel=()=>{chatReplyTo=null;chatEditId=null;renderChat()};
 ACT.continueSignals=async()=>{
   closeSheet('pay');
   await refresh();
@@ -1674,6 +1737,21 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();sendChat();
   }
 });
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
+    const f=e.target.files[0];if(f.size>5242880){e.target.value='';toast('Choose an image up to 5 MB.');return}
+    toast('Photo selected: '+f.name);
+  }
+});
+let chatTouchStart=null;
+document.addEventListener('touchstart',e=>{
+  const msg=e.target.closest('.chat-msg');if(msg&&e.touches.length===1)chatTouchStart={id:msg.dataset.chatId,x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!chatTouchStart)return;
+  const t=e.changedTouches[0],dx=t.clientX-chatTouchStart.x,dy=t.clientY-chatTouchStart.y,id=chatTouchStart.id;chatTouchStart=null;
+  if(dx>75&&Math.abs(dy)<55)replyChatMessage(id);
+},{passive:true});
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
   const push=e.target.closest('[data-push-toggle]');if(push){togglePhoneNotifications();return}
