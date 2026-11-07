@@ -659,6 +659,31 @@ const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false};
 let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false,chatChannelReady=false,chatIsTyping=false;
+let notificationSoundEnabled=true;
+try{notificationSoundEnabled=localStorage.getItem('pippulse_notification_sound')!=='off'}catch(e){}
+function playNotificationSound(){
+  if(!notificationSoundEnabled)return;
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
+    const ctx=new Ctx();if(ctx.state==='suspended')ctx.resume();
+    const now=ctx.currentTime;
+    [880,1175].forEach((frequency,i)=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type='sine';osc.frequency.value=frequency;
+      gain.gain.setValueAtTime(0.0001,now+i*.13);
+      gain.gain.exponentialRampToValueAtTime(.12,now+i*.13+.015);
+      gain.gain.exponentialRampToValueAtTime(.0001,now+i*.13+.11);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start(now+i*.13);osc.stop(now+i*.13+.12);
+    });
+    setTimeout(()=>ctx.close().catch(()=>{}),500);
+  }catch(e){}
+}
+function toggleNotificationSound(){
+  notificationSoundEnabled=!notificationSoundEnabled;
+  try{localStorage.setItem('pippulse_notification_sound',notificationSoundEnabled?'on':'off')}catch(e){}
+  if(notificationSoundEnabled)playNotificationSound();
+  renderNotifications();
+}
 let chatReplyTo=null,chatEditId=null,chatTypingTimer=null,chatTypingStopTimer=null,chatLongPressTimer=null,chatLongPressFired=false;
 const chatTypingUsers=new Map();
 const $=id=>document.getElementById(id);
@@ -876,38 +901,48 @@ function renderNotifications(){
   const btn=$('notif-btn'),panel=$('notif-panel');if(!btn||!panel)return;
   const allowed=notificationEligible();btn.hidden=!allowed;
   if(!allowed){panel.hidden=true;return}
-  const unread=S.notifications.filter(n=>!S.notificationReads.has(n.id)).length;
+  const unread=S.notifications.filter(n=>!S.notificationReads.has(n.kind+':'+n.id)).length;
   if('setAppBadge' in navigator){if(unread)navigator.setAppBadge(unread).catch(()=>{});else if('clearAppBadge' in navigator)navigator.clearAppBadge().catch(()=>{});}
   btn.innerHTML='<svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>'+(unread?'<span class="ncount">'+(unread>99?'99+':unread)+'</span>':'');
   btn.setAttribute('aria-label',unread?'Notifications, '+unread+' unread':'Notifications');
   panel.hidden=!S.notificationOpen;
-  panel.innerHTML='<div class="notif-head"><b>Signal notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable / disable phone alerts</button><small>Receive a phone alert when a new signal is published.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
-    const isNew=!S.notificationReads.has(n.id);
-    return '<button class="notif-item '+(isNew?'unread':'')+'" data-notification="'+esc(n.id)+'"><b>'+esc(n.title)+'</b><small>'+esc(n.body)+'</small><time>'+esc(new Date(n.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))+'</time></button>';
-  }).join(''):'<div class="notif-empty">No signal notifications yet. New alerts will appear here when a signal is published.</div>');
+  panel.innerHTML='<div class="notif-head"><b>Notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable / disable phone alerts</button><button class="btn small" type="button" data-sound-toggle>Sound: '+(notificationSoundEnabled?'On':'Off')+'</button><small>Phone alerts work when permitted by your device. In-app sound plays while PipPulse is open.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
+    const isNew=!S.notificationReads.has(n.kind+':'+n.id);
+    return '<button class="notif-item '+(isNew?'unread':'')+'" data-notification="'+esc(n.id)+'" data-notification-kind="'+n.kind+'"><b>'+esc(n.title)+'</b><small>'+esc(n.body)+'</small><time>'+esc(new Date(n.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))+'</time></button>';
+  }).join(''):'<div class="notif-empty">No notifications yet.</div>');
 }
 async function loadNotifications(){
   if(!notificationEligible()){S.notifications=[];S.notificationReads=new Set();renderNotifications();return}
   try{
-    const{data,error}=await sb.from('signal_notifications').select('id,signal_id,title,body,created_at').order('created_at',{ascending:false}).limit(25);
-    if(error)throw error;
-    S.notifications=data||[];
-    const ids=S.notifications.map(n=>n.id);
-    if(ids.length){
-      const{data:reads,error:readError}=await sb.from('signal_notification_reads').select('notification_id').eq('user_id',S.user.id).in('notification_id',ids);
-      if(readError)throw readError;
-      S.notificationReads=new Set((reads||[]).map(x=>x.notification_id));
-    }else S.notificationReads=new Set();
-  }catch(e){S.notifications=[];S.notificationReads=new Set();console.warn('Could not load signal notifications:',e)}
+    const [signals,reminders]=await Promise.all([
+      sb.from('signal_notifications').select('id,signal_id,title,body,created_at').order('created_at',{ascending:false}).limit(25),
+      sb.from('subscription_notifications').select('id,title,body,created_at,read_at,type,notice_day').order('created_at',{ascending:false}).limit(25)
+    ]);
+    if(signals.error)throw signals.error;
+    if(reminders.error)throw reminders.error;
+    const signalRows=(signals.data||[]).map(n=>({...n,kind:'signal'}));
+    const reminderRows=(reminders.data||[]).map(n=>({...n,kind:'subscription'}));
+    S.notifications=[...signalRows,...reminderRows].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,40);
+    const signalIds=signalRows.map(n=>n.id);
+    const signalReads=signalIds.length?await sb.from('signal_notification_reads').select('notification_id').eq('user_id',S.user.id).in('notification_id',signalIds):{data:[],error:null};
+    if(signalReads.error)throw signalReads.error;
+    S.notificationReads=new Set([
+      ...(signalReads.data||[]).map(x=>'signal:'+x.notification_id),
+      ...reminderRows.filter(x=>x.read_at).map(x=>'subscription:'+x.id)
+    ]);
+  }catch(e){console.warn('Could not load notifications:',e)}
   renderNotifications();
 }
 function watchNotifications(){
   if(!notificationEligible()){stopWatchingNotifications();return}
   if(notificationChannel&&notificationUserId===S.user.id)return;
   stopWatchingNotifications();notificationUserId=S.user.id;
-  notificationChannel=sb.channel('signal-notifications-'+S.user.id)
+  notificationChannel=sb.channel('all-notifications-'+S.user.id)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'signal_notifications'},()=>{
-      loadNotifications();toast('A new signal alert is available.');
+      playNotificationSound();loadNotifications();toast('A new signal alert is available.');
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'subscription_notifications',filter:'user_id=eq.'+S.user.id},()=>{
+      playNotificationSound();loadNotifications();toast('A subscription reminder is available.');
     }).subscribe();
 }
 function stopWatchingNotifications(){
@@ -919,12 +954,20 @@ function toggleNotifications(){
   S.notificationOpen=!S.notificationOpen;
   if(S.notificationOpen)loadNotifications();else renderNotifications();
 }
-async function openNotification(id){
+async function openNotification(id,kind){
   if(!S.user)return;
   try{
-    const{error}=await sb.from('signal_notification_reads').upsert({notification_id:id,user_id:S.user.id,read_at:new Date().toISOString()},{onConflict:'notification_id,user_id'});
-    if(error)throw error;
-    S.notificationReads.add(id);S.notificationOpen=false;renderNotifications();show('signals');
+    if(kind==='subscription'){
+      const{error}=await sb.from('subscription_notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('user_id',S.user.id);
+      if(error)throw error;
+      S.notificationReads.add('subscription:'+id);
+    }else{
+      const{error}=await sb.from('signal_notification_reads').upsert({notification_id:id,user_id:S.user.id,read_at:new Date().toISOString()},{onConflict:'notification_id,user_id'});
+      if(error)throw error;
+      S.notificationReads.add('signal:'+id);
+    }
+    S.notificationOpen=false;renderNotifications();
+    if(kind==='signal')show('signals');
   }catch(e){toast('Could not update notification: '+friendly(e))}
 }
 
@@ -1868,7 +1911,8 @@ document.addEventListener('touchcancel',()=>{if(chatLongPressTimer)clearTimeout(
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
   const push=e.target.closest('[data-push-toggle]');if(push){togglePhoneNotifications();return}
-  const note=e.target.closest('[data-notification]');if(note){openNotification(note.dataset.notification);return}
+  const sound=e.target.closest('[data-sound-toggle]');if(sound){toggleNotificationSound();return}
+  const note=e.target.closest('[data-notification]');if(note){openNotification(note.dataset.notification,note.dataset.notificationKind||'signal');return}
   const u=e.target.closest('[data-unlock]');if(u)return unlock(u.dataset.unlock,u);
   const c=e.target.closest('[data-copy]');if(c)copySig(c.dataset.copy);
   const ct=e.target.closest('[data-copytext]');if(ct)navigator.clipboard.writeText(ct.dataset.copytext).then(()=>toast('Copied.'),()=>toast('Copy is not available on this device.'));
