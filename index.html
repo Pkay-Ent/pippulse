@@ -823,7 +823,7 @@ function renderNotifications(){
   btn.innerHTML='<svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>'+(unread?'<span class="ncount">'+(unread>99?'99+':unread)+'</span>':'');
   btn.setAttribute('aria-label',unread?'Notifications, '+unread+' unread':'Notifications');
   panel.hidden=!S.notificationOpen;
-  panel.innerHTML='<div class="notif-head"><b>Signal notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable phone alerts</button><small>Receive a phone alert when a new signal is published.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
+  panel.innerHTML='<div class="notif-head"><b>Signal notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable / disable phone alerts</button><small>Receive a phone alert when a new signal is published.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
     const isNew=!S.notificationReads.has(n.id);
     return '<button class="notif-item '+(isNew?'unread':'')+'" data-notification="'+esc(n.id)+'"><b>'+esc(n.title)+'</b><small>'+esc(n.body)+'</small><time>'+esc(new Date(n.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))+'</time></button>';
   }).join(''):'<div class="notif-empty">No signal notifications yet. New alerts will appear here when a signal is published.</div>');
