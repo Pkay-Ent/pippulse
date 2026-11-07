@@ -117,7 +117,10 @@ create policy "Members delete own chat images"
   on storage.objects for delete to authenticated
   using (
     bucket_id = 'community-chat-images'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (
+      (storage.foldername(name))[1] = (select auth.uid())::text
+      or coalesce(public.is_admin(), false)
+    )
   );
 
 commit;
