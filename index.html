@@ -1546,8 +1546,8 @@ ACT.resetSave=async(_,btn)=>{
 /* --- Payments (amounts are decided by the server, never by this page) --- */
 async function loadPayments(){try{const{data,error}=await sb.rpc('my_payments');S.payments=error?[]:(data||[])}catch(e){S.payments=[]}}
 const MOMO_NETS=[['mtn','MTN Mobile Money'],['telecel','Telecel Cash'],['at','AT Money']];
-const USDT_NETS=[['trc20','USDT on TRC20 (TRON)'],['bep20','USDT on BEP20 (BNB Smart Chain)']];
-const NETLAB={mtn:'MTN MoMo',telecel:'Telecel Cash',at:'AT Money',trc20:'USDT TRC20',bep20:'USDT BEP20'};
+const USDT_NETS=[['trc20','USDT on TRC20 (TRON)']];
+const NETLAB={mtn:'MTN MoMo',telecel:'Telecel Cash',at:'AT Money',trc20:'USDT TRC20'};
 const PAYKEYS=['support_contact','paystack_enabled'].concat(MOMO_NETS.map(n=>'momo_'+n[0]+'_number'),MOMO_NETS.map(n=>'momo_'+n[0]+'_name'),USDT_NETS.map(n=>'usdt_'+n[0]+'_address'));
 /* Ghana accounts can pay by Mobile Money or USDT; everyone else pays in USDT. A network is offered only when the admin has entered its number or address. */
 function payMethods(){return S.profile&&S.profile.country==='Ghana'?['momo','usdt']:['usdt']}
@@ -1595,7 +1595,7 @@ function renderPay(){
       opts.push(`<button class='opt' data-act='paystackMomoOpen'><span class='oi'>${IC_PH}</span><span><b>Mobile Money</b><small>Pay with MTN, Telecel or AT Money. Receive a payment prompt on your phone.</small></span><span class='ob'>Instant</span></button>`);
     }
     if(hasMomo)opts.push(`<button class='opt' data-act='payOpen' data-id='momo'><span class='oi'>${IC_PH}</span><span><b>Mobile Money transfer</b><small>Send to our MTN, Telecel or AT number, then enter your transaction ID.</small></span><span class='ob m'>We confirm</span></button>`);
-    if(hasUsdt)opts.push(`<button class='opt' data-act='payOpen' data-id='usdt'><span class='oi'>${IC_COIN}</span><span><b>USDT (crypto)</b><small>Send USDT on TRC20 or BEP20, then enter your transaction hash.</small></span><span class='ob m'>We confirm</span></button>`);
+    if(hasUsdt)opts.push(`<button class='opt' data-act='payOpen' data-id='usdt'><span class='oi'>${IC_COIN}</span><span><b>USDT (crypto)</b><small>Send USDT on TRC20, then enter your transaction hash.</small></span><span class='ob m'>We confirm</span></button>`);
     $('pay-body').innerHTML=head+(opts.length?`<p class='lbl'>Choose how you want to pay</p><div class='opts'>${opts.join('')}</div>`:`<div class='note'>Payment options have not been set up yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`)+`<button class='btn' data-act='closeSheet' data-id='pay'>Close</button><p class='hint'>Never share your password with anyone. We will never ask for it.</p>`;
     return;
   }
@@ -1896,16 +1896,16 @@ ACT.sigClose=async(id,btn)=>{
   catch(e){toast('Could not close: '+((e&&e.message)||'error'))}finally{btn.disabled=false}
 };
 
-const SETF=[['headline','Homepage headline',1],['description','Homepage description',1],['momo_mtn_number','MTN Mobile Money number',0],['momo_mtn_name','MTN account name',0],['momo_telecel_number','Telecel Cash number',0],['momo_telecel_name','Telecel account name',0],['momo_at_number','AT Money number',0],['momo_at_name','AT account name',0],['usdt_trc20_address','USDT wallet address on TRC20 (starts with T)',0],['usdt_bep20_address','USDT wallet address on BEP20 (starts with 0x)',0],['paystack_enabled','Paystack online payments: type on to turn them on',0],['support_contact','Support contact shown to users',0]];
+const SETF=[['headline','Homepage headline',1],['description','Homepage description',1],['momo_mtn_number','MTN Mobile Money number',0],['momo_mtn_name','MTN account name',0],['momo_telecel_number','Telecel Cash number',0],['momo_telecel_name','Telecel account name',0],['momo_at_number','AT Money number',0],['momo_at_name','AT account name',0],['usdt_trc20_address','USDT wallet address on TRC20 (starts with T)',0],['paystack_enabled','Paystack online payments: type on to turn them on',0],['support_contact','Support contact shown to users',0]];
 function adminSettingsHtml(){
   const v=S.admin.settings;
-  return `<div class='card'><h3>Settings</h3><p class='hint'>Payment details are shown to signed-in users when they pay. Leave a network empty to hide it. Copy wallet addresses straight from your wallet and double-check every character. The TRC20 and BEP20 addresses are different addresses on different networks: never use one in place of the other.</p>
+  return `<div class='card'><h3>Settings</h3><p class='hint'>Payment details are shown to signed-in users when they pay. Copy your USDT TRC20 wallet address straight from your wallet and double-check every character.</p>
   ${SETF.map(f=>`<label for='st-${f[0]}'>${esc(f[1])}</label><input id='st-${f[0]}' maxlength='2000' value='${esc(v[f[0]]||'')}' autocomplete='off'>`).join('')}
   <button class='btn gold' data-act='setSave'>Save settings</button></div>`;
 }
 ACT.setSave=async(_,btn)=>{
   const cur=S.admin.settings,rows=SETF.filter(f=>$('st-'+f[0]).value.trim()!==(cur[f[0]]||'')).map(f=>({key:f[0],value:$('st-'+f[0]).value.trim(),is_public:!!f[2],updated_at:new Date().toISOString()}));
-  const bad=rows.find(r=>r.value&&((r.key==='usdt_trc20_address'&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(r.value))||(r.key==='usdt_bep20_address'&&!/^0x[0-9a-fA-F]{40}$/.test(r.value))));
+  const bad=rows.find(r=>r.value&&((r.key==='usdt_trc20_address'&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(r.value))));
   if(bad)return toast('That wallet address does not look right. Copy it again from your wallet.');
   if(!rows.length)return toast('Nothing changed.');
   btn.disabled=true;
