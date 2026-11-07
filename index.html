@@ -623,7 +623,7 @@ const PLANS=[
 const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false};
-let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false;
+let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false,chatChannelReady=false,chatIsTyping=false;
 let chatReplyTo=null,chatEditId=null,chatTypingTimer=null,chatTypingStopTimer=null,chatLongPressTimer=null,chatLongPressFired=false;
 const chatTypingUsers=new Map();
 const $=id=>document.getElementById(id);
@@ -669,6 +669,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelec
 const VIEWS=['signals','plans','chat','account'];
 function show(v){
   if(v==='chat'&&!S.user){openAuth('login');return}
+  try{localStorage.setItem('pippulse_last_view',v)}catch(e){}
   $('v-admin').hidden=true;
   if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat()}
   VIEWS.forEach((x,i)=>{const on=x===v;$('v-'+x).hidden=!on;$('n-'+x).classList.toggle('on',on);if(on){$('ind').style.setProperty('--ix',i);if(x!=='signals'){const el=$('v-'+x);el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}}});
@@ -893,7 +894,7 @@ async function openNotification(id){
 function stopChat(){
   if(chatTypingStopTimer)clearTimeout(chatTypingStopTimer);if(chatTypingTimer)clearTimeout(chatTypingTimer);
   if(chatChannel){sb.removeChannel(chatChannel);chatChannel=null}
-  chatTypingUsers.clear();chatUserId=null;updateChatTyping();closeChatMenu();
+  chatTypingUsers.clear();chatChannelReady=false;chatIsTyping=false;chatUserId=null;updateChatTyping();closeChatMenu();
 }
 function chatName(){
   const p=S.profile||{};
@@ -905,8 +906,9 @@ function updateChatTyping(){
   el.textContent=names.length===1?names[0]+' is typing…':names.length===2?names.join(' and ')+' are typing…':'';
 }
 function sendChatTyping(isTyping){
-  if(!chatChannel||!S.user)return;
-  chatChannel.send({type:'broadcast',event:'typing',payload:{user_id:S.user.id,name:chatName(),typing:!!isTyping}}).catch(()=>{});
+  if(!chatChannel||!chatChannelReady||!S.user)return;
+  chatIsTyping=!!isTyping;
+  chatChannel.send({type:'broadcast',event:'typing',payload:{user_id:S.user.id,name:chatName(),typing:chatIsTyping}}).catch(()=>{});
 }
 function handleChatTyping(payload){
   if(!payload||!payload.user_id||payload.user_id===S.user?.id)return;
@@ -984,12 +986,16 @@ function watchChat(){
   if(!S.user){stopChat();return}
   if(chatChannel&&chatUserId===S.user.id)return;
   stopChat();chatUserId=S.user.id;
+  chatChannelReady=false;
   chatChannel=sb.channel('community-chat-live',{config:{broadcast:{self:false}}})
     .on('broadcast',{event:'typing'},({payload})=>handleChatTyping(payload))
     .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_messages'},()=>{
       const feed=$('chat-feed'),nearBottom=feed?feed.scrollHeight-feed.scrollTop-feed.clientHeight<90:true;
       loadChat().then(()=>{if(nearBottom)scrollChatToBottom()});
-    }).subscribe();
+    }).subscribe(status=>{
+      chatChannelReady=status==='SUBSCRIBED';
+      if(chatChannelReady&&chatIsTyping)sendChatTyping(true);
+    });
 }
 async function sendChat(){
   if(!S.user)return openAuth('login');
@@ -1023,6 +1029,8 @@ async function sendChat(){
       }
       chatReplyTo=null;toast('Message sent.');
     }
+    if(input)input.value='';
+    const imageInput=$('chat-image');if(imageInput)imageInput.value='';
     await loadChat();scrollChatToBottom();
   }catch(e){toast(friendly(e))}
   finally{chatBusy=false;if($('chat-send')){$('chat-send').disabled=false;$('chat-send').textContent=chatEditId?'Save':'Send'}}
@@ -1092,6 +1100,7 @@ async function refresh(manual){
     }else{S.access=null;S.profile=null;S.signals=[];S.payments=[];S.notifications=[];S.notificationReads=new Set();S.notificationOpen=false;S.chatMessages=[];S.chatLoading=false;stopWatchingNotifications();stopChat()}
   }catch(e){S.error=friendly(e)}
   S.loading=false;rf.classList.remove('spin');render();
+  if(!window.__pippulseViewRestored){window.__pippulseViewRestored=true;let last='signals';try{last=localStorage.getItem('pippulse_last_view')||'signals'}catch(e){}if(VIEWS.includes(last)&&!(last==='chat'&&!S.user))show(last)}
   if(manual===true)toast(S.error?'Could not update signals.':'Signals updated.');
 }
 async function loadSignals(){
