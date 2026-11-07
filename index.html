@@ -439,6 +439,41 @@ input[type=file]{padding:.55rem .7rem}
 .rowbtns{display:flex;gap:.4rem;flex:none}
 .foot{gap:.5rem}
 </style>
+<script>
+/* Restore the last section before the first paint, preventing a Signals-page flash. */
+(function(){
+  try{
+    var v=localStorage.getItem('pippulse_last_view');
+    if(['signals','plans','chat','account'].includes(v))document.documentElement.setAttribute('data-start-view',v);
+  }catch(e){}
+})();
+</script>
+<style>
+html[data-start-view="signals"] #v-signals,
+html[data-start-view="plans"] #v-plans,
+html[data-start-view="chat"] #v-chat,
+html[data-start-view="account"] #v-account{display:block!important}
+html[data-start-view="signals"] #v-plans,
+html[data-start-view="signals"] #v-chat,
+html[data-start-view="signals"] #v-account,
+html[data-start-view="plans"] #v-signals,
+html[data-start-view="plans"] #v-chat,
+html[data-start-view="plans"] #v-account,
+html[data-start-view="chat"] #v-signals,
+html[data-start-view="chat"] #v-plans,
+html[data-start-view="chat"] #v-account,
+html[data-start-view="account"] #v-signals,
+html[data-start-view="account"] #v-plans,
+html[data-start-view="account"] #v-chat{display:none!important}
+html[data-start-view="signals"] #n-signals,
+html[data-start-view="plans"] #n-plans,
+html[data-start-view="chat"] #n-chat,
+html[data-start-view="account"] #n-account{color:var(--gold)}
+html[data-start-view="signals"] .ind{transform:translateX(0)}
+html[data-start-view="plans"] .ind{transform:translateX(100%)}
+html[data-start-view="chat"] .ind{transform:translateX(200%)}
+html[data-start-view="account"] .ind{transform:translateX(300%)}
+</style>
 </head>
 <body>
 <noscript><p style="padding:20px">PipPulse Gold requires JavaScript. Please enable it to continue.</p></noscript>
