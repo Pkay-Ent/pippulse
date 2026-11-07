@@ -906,8 +906,9 @@ function updateChatTyping(){
   el.textContent=names.length===1?names[0]+' is typing…':names.length===2?names.join(' and ')+' are typing…':'';
 }
 function sendChatTyping(isTyping){
-  if(!chatChannel||!chatChannelReady||!S.user)return;
   chatIsTyping=!!isTyping;
+  if(!chatChannel||!S.user)return;
+  if(!chatChannelReady)return;
   chatChannel.send({type:'broadcast',event:'typing',payload:{user_id:S.user.id,name:chatName(),typing:chatIsTyping}}).catch(()=>{});
 }
 function handleChatTyping(payload){
