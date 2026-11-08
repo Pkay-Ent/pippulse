@@ -1618,8 +1618,8 @@ function renderPay(){
     <li><b>Enter your payment reference</b>
      <label for='p-ref'>${momo?'Mobile Money transaction ID':'USDT transaction hash'}</label>
      <input id='p-ref' maxlength='150' autocomplete='off' autocapitalize='none' spellcheck='false' value='${esc(keepRef)}'>
-     <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet (optional)'}</label>
-     <input id='p-sender' maxlength='60' autocomplete='off' value='${esc(keepSender)}'>
+     <label for='p-sender'>${momo?'Name or number you paid from (optional)':'Sending wallet address (required)'}</label>
+     <input id='p-sender' maxlength='60' autocomplete='off' ${momo?'':'required'} value='${esc(keepSender)}'>
      <p class='err' id='p-err' role='alert' hidden></p></li>
     <li><b>We confirm and activate</b><small class='pn'>${momo?'An administrator checks your Mobile Money payment.':'Your USDT transfer is checked automatically after TRON confirms it. You do not need to contact an administrator.'}</small></li>
    </ol>
@@ -1723,6 +1723,7 @@ ACT.paySubmit=async(_,btn)=>{
   if(!S.payNet)return fail('Choose how you will pay.');
   if(S.payMethod==='usdt'&&!/^[0-9a-fA-F]{64}$/.test(ref))return fail('Enter the 64-character TRON transaction hash.');
   if(S.payMethod!=='usdt'&&ref.length<3)return fail('Enter the Mobile Money transaction ID.');
+  if(S.payMethod==='usdt'&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(sender))return fail('Enter the TRON wallet address you sent the USDT from (a 34-character address beginning with T).');
   btn.disabled=true;
   try{
     const{data,error}=await sb.rpc('submit_payment',{p_plan:S.payPlan,p_method:S.payMethod,p_network:S.payNet,p_reference:ref,p_sender:sender||null});
