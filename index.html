@@ -1338,7 +1338,7 @@ function renderPlans(){
         <span><h4>${p.label}${save>0?`<span class="save">Save ${save}%</span>`:''}</h4><small>${p.note}${pm}</small></span>
         <span class="price"><i>${gh?'GH₵':'$'}</i>${gh?p.ghs:p.usd}<small>${gh?'$'+p.usd:'GH₵'+p.ghs}</small></span></button>`}).join('')}</div>
     <div class="paybar"><div><small id="pb-m">${gh?'Pay with Mobile Money':'Pay with USDT'}</small><b id="pb-p">${gh?'GH₵'+sel.ghs:'$'+sel.usd}</b></div><button class="btn gold" id="pb-b" onclick="buy()">Continue with ${sel.label}</button></div>
-    <div class="note">Ghana pays in GH₵ with Mobile Money. Everyone else pays in USDT. After you pay, enter your payment reference in the app. Your plan activates once an administrator confirms the payment.</div>
+    <div class="note">Ghanaian Mobile Money payments are processed through Paystack. USDT TRC20 checkout provides a unique deposit address with a 15-minute payment window and automatic blockchain monitoring.</div>
     <p class="legal">Signals are market commentary, not financial advice. Gold trading carries substantial risk.</p>`;
 }
 function selectPlan(id){
@@ -1548,17 +1548,93 @@ async function loadPayments(){try{const{data,error}=await sb.rpc('my_payments');
 const MOMO_NETS=[['mtn','MTN Mobile Money'],['telecel','Telecel Cash'],['at','AT Money']];
 const USDT_NETS=[['trc20','USDT on TRC20 (TRON)']];
 const NETLAB={mtn:'MTN MoMo',telecel:'Telecel Cash',at:'AT Money',trc20:'USDT TRC20'};
+let trc20CountdownInterval=null;
 const PAYKEYS=['support_contact','paystack_enabled'].concat(MOMO_NETS.map(n=>'momo_'+n[0]+'_number'),MOMO_NETS.map(n=>'momo_'+n[0]+'_name'),USDT_NETS.map(n=>'usdt_'+n[0]+'_address'));
 /* Ghana accounts can pay by Mobile Money or USDT; everyone else pays in USDT. A network is offered only when the admin has entered its number or address. */
 function payMethods(){return S.profile&&S.profile.country==='Ghana'?['momo','usdt']:['usdt']}
-function payNets(m){const d=S.pay||{};return m==='momo'?MOMO_NETS.filter(n=>d['momo_'+n[0]+'_number']):USDT_NETS.filter(n=>d['usdt_'+n[0]+'_address'])}
+function payNets(m){const d=S.pay||{};return m==='momo'?MOMO_NETS.filter(n=>d['momo_'+n[0]+'_number']):[]}
 ACT.payMethod=id=>{S.payMethod=id;S.payNet=null;renderPay()};
 ACT.payNet=id=>{S.payNet=id;renderPay()};
 async function loadPaySettings(){try{const{data}=await sb.from('app_settings').select('key,value').in('key',PAYKEYS);S.pay={};(data||[]).forEach(r=>{S.pay[r.key]=r.value})}catch(e){}}
+function trc20TimeLeft(expiresAt){
+  const end=Date.parse(expiresAt||'');
+  return Number.isFinite(end)?Math.max(0,Math.ceil((end-Date.now())/1000)):0;
+}
+function updateTrc20Countdowns(){
+  document.querySelectorAll('[data-trc20-expiry]').forEach(el=>{
+    const left=trc20TimeLeft(el.dataset.trc20Expiry);
+    el.textContent=left>0?'Time remaining: '+String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0'):'Checkout expired';
+    const actions=el.closest('[data-trc20-checkout]')?.querySelector('[data-trc20-expired-actions]');
+    if(actions)actions.hidden=left>0;
+  });
+}
+function ensureTrc20Countdown(){
+  updateTrc20Countdowns();
+  if(!trc20CountdownInterval)trc20CountdownInterval=setInterval(updateTrc20Countdowns,1000);
+}
+function renderTrc20Checkout(data){
+  const p=PLANS.find(x=>x.id===(data.plan||S.payPlan));
+  const label=p?p.label:(data.plan||'Subscription');
+  const currency=data.currency||'USD';
+  const amount=Number(data.amount);
+  const amountText=(currency==='USD'?'$':currency+' ')+(Number.isFinite(amount)?amount.toFixed(2):String(data.amount||''));
+  const expiry=data.expires_at||'';
+  const expired=trc20TimeLeft(expiry)===0;
+  const terminal=data.status==='activated'||data.status==='rejected';
+  const statusText=data.status==='activated'?'Payment confirmed':data.status==='rejected'?'Payment rejected':expired?'Checkout expired':'Loading timer…';
+  $('pay-body').innerHTML=`<h3>USDT TRC20 checkout</h3>
+    <div class='ordr'><div><b>${esc(label)}</b><small>Send only USDT on the TRON (TRC20) network</small></div><div class='ordp'>${esc(amountText)}</div></div>
+    <div class='card' data-trc20-checkout>
+      <p class='lbl'>Your unique deposit address</p>
+      <div class='addr'><span style='overflow-wrap:anywhere'>${esc(data.deposit_address||'')}</span><button class='btn mini' data-copytext='${esc(data.deposit_address||'')}'>Copy</button></div>
+      <p class='hint'>Send exactly <b>${esc(amountText)}</b>. Do not send any other token or use another network. Network fees are paid separately.</p>
+      <p class='hint'><b>15-minute payment window</b></p>
+      <p class='pst pending' ${terminal?'':"data-trc20-expiry='"+esc(expiry)+"'"}>${statusText}</p>
+      <p class='hint'>After a valid transfer is detected and confirmed, your subscription activates automatically. If the timer expires, this address will still be monitored; any late transfer will be recorded and may need review.</p>
+      <div data-trc20-expired-actions ${expired&&!terminal?'':'hidden'}>
+        <button class='btn gold' data-act='trc20Start'>Start a new checkout</button>
+      </div>
+    </div>
+    <button class='btn' data-act='closeSheet' data-id='pay'>Close</button>`;
+  ensureTrc20Countdown();
+}
+ACT.trc20Start=async()=>{
+  $('pay-body').innerHTML=`<h3>USDT TRC20 checkout</h3><p class='mut'>Generating your unique deposit address…</p>`;
+  try{
+    if(!S.trc20CheckoutId||((S.trc20Checkout)&&trc20TimeLeft(S.trc20Checkout.expires_at)===0)){
+      S.trc20CheckoutId=crypto.randomUUID();
+      S.trc20Checkout=null;
+    }
+    const{data,error}=await sb.functions.invoke('trc20-create-payment',{body:{plan:S.payPlan,checkout_id:S.trc20CheckoutId}});
+    if(error)throw error;
+    if(!data||data.success!==true||!data.deposit_address||!data.expires_at||!data.payment_id)
+      throw new Error((data&&data.error)||'The checkout service returned incomplete details.');
+    S.trc20Checkout=data;
+    S.payStep='trc20_checkout';
+    renderTrc20Checkout(data);
+    await loadPayments();
+  }catch(e){
+    const msg=String((e&&e.message)||'Could not create your checkout.').replace(/[<>]/g,'').slice(0,220);
+    $('pay-body').innerHTML=`<h3>USDT TRC20 checkout</h3><p class='err' role='alert'>${esc(msg)}</p>
+      <p class='hint'>No payment address was confirmed. You can safely retry; the same checkout request ID will be reused.</p>
+      <button class='btn gold' data-act='trc20Start'>Try again</button>
+      <button class='btn' data-act='closeSheet' data-id='pay'>Close</button>`;
+  }
+};
+ACT.viewTrc20Checkout=id=>{
+  const x=(S.payments||[]).find(p=>p.id===id);
+  if(!x||!x.deposit_address||!x.crypto_expires_at)return;
+  S.payPlan=x.plan;
+  S.trc20CheckoutId=null;
+  S.trc20Checkout={expires_at:x.crypto_expires_at};
+  S.payStep='trc20_checkout';
+  renderTrc20Checkout({payment_id:x.id,plan:x.plan,amount:x.amount,currency:x.currency,network:'trc20',status:x.status,deposit_address:x.deposit_address,expires_at:x.crypto_expires_at});
+};
+
 /* The payment method and network are chosen inside the payment sheet (S.payMethod and S.payNet) */
 async function openPay(id){
   if(!PLANS.find(x=>x.id===id))return;
-  S.payPlan=id;S.payStep='choose';$('pay-body').innerHTML=`<h3>Checkout</h3><p class='mut'>Loading…</p>`;openSheet('pay');
+  S.payPlan=id;S.payStep='choose';S.trc20CheckoutId=null;S.trc20Checkout=null;$('pay-body').innerHTML=`<h3>Checkout</h3><p class='mut'>Loading…</p>`;openSheet('pay');
   await loadPaySettings();
   const ms=payMethods();S.payMethod=ms.find(x=>payNets(x).length)||ms[0];S.payNet=(payNets(S.payMethod)[0]||[null])[0];
   renderPay();
@@ -1590,12 +1666,12 @@ function renderPay(){
     return;
   }
   if(S.payStep!=='manual'){
-    const hasPs=gh&&d.paystack_enabled==='on',hasMomo=gh&&payNets('momo').length>0,hasUsdt=payNets('usdt').length>0,opts=[];
+    const hasPs=gh&&d.paystack_enabled==='on',hasMomo=false,hasUsdt=true,opts=[];
     if(hasPs){
       opts.push(`<button class='opt' data-act='paystackMomoOpen'><span class='oi'>${IC_PH}</span><span><b>Mobile Money</b><small>Pay with MTN, Telecel or AT Money. Receive a payment prompt on your phone.</small></span><span class='ob'>Instant</span></button>`);
     }
     if(hasMomo)opts.push(`<button class='opt' data-act='payOpen' data-id='momo'><span class='oi'>${IC_PH}</span><span><b>Mobile Money transfer</b><small>Send to our MTN, Telecel or AT number, then enter your transaction ID.</small></span><span class='ob m'>We confirm</span></button>`);
-    if(hasUsdt)opts.push(`<button class='opt' data-act='payOpen' data-id='usdt'><span class='oi'>${IC_COIN}</span><span><b>USDT (crypto)</b><small>Send USDT on TRC20, then enter your transaction hash.</small></span><span class='ob m'>We confirm</span></button>`);
+    if(hasUsdt)opts.push(`<button class='opt' data-act='trc20Start'><span class='oi'>${IC_COIN}</span><span><b>USDT on TRC20</b><small>Pay $${esc(p.usd)} USD. Get a unique deposit address and pay within 15 minutes.</small></span><span class='ob'>Automatic</span></button>`);
     $('pay-body').innerHTML=head+(opts.length?`<p class='lbl'>Choose how you want to pay</p><div class='opts'>${opts.join('')}</div>`:`<div class='note'>Payment options have not been set up yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`)+`<button class='btn' data-act='closeSheet' data-id='pay'>Close</button><p class='hint'>Never share your password with anyone. We will never ask for it.</p>`;
     return;
   }
@@ -1626,7 +1702,7 @@ function renderPay(){
    <button class='btn gold' data-act='paySubmit'${net?'':' disabled'}>I have paid, submit</button>
    <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>`;
 }
-ACT.payOpen=id=>{S.payStep='manual';S.payMethod=id;S.payNet=null;renderPay()};
+ACT.payOpen=id=>{if(id!=='momo')return;S.payStep='manual';S.payMethod=id;S.payNet=null;renderPay()};
 ACT.payBack=()=>{S.payStep='choose';renderPay()};
 /* Paystack direct Mobile Money charge. Provider codes are Paystack's Ghana codes:
    MTN=mtn, Telecel=vod, AT Money=atl. Amount is always read server-side. */
@@ -1721,6 +1797,7 @@ async function checkReturn(){
 ACT.paySubmit=async(_,btn)=>{
   const ref=$('p-ref').value.trim(),sender=$('p-sender').value.trim(),err=$('p-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
   if(!S.payNet)return fail('Choose how you will pay.');
+  if(S.payMethod==='usdt')return fail('TRC20 now uses automatic checkout. Return and choose USDT on TRC20.');
   if(S.payMethod==='usdt'&&!/^[0-9a-fA-F]{64}$/.test(ref))return fail('Enter the 64-character TRON transaction hash.');
   if(S.payMethod!=='usdt'&&ref.length<3)return fail('Enter the Mobile Money transaction ID.');
   if(S.payMethod==='usdt'&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(sender))return fail('Enter the TRON wallet address you sent the USDT from (a 34-character address beginning with T).');
@@ -1753,8 +1830,15 @@ ACT.paySubmit=async(_,btn)=>{
 };
 function payList(){
   const L=S.payments||[];if(!L.length)return '';
-  const lab={pending:'Awaiting review',activated:'Activated',rejected:'Rejected'};
-  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>`<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}${x.status==='pending'&&x.payment_method==='usdt'&&x.network==='trc20'?`<button class='btn mini' style='margin-top:8px' data-act='verifyTrc20' data-id='${esc(x.id)}'>Check blockchain confirmation</button>`:''}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`).join('')}</div>`;
+  const lab={pending:'Awaiting confirmation',activated:'Activated',rejected:'Rejected'};
+  ensureTrc20Countdown();
+  return `<div class='card'><div class='uh'><span>Your payments</span></div>${L.map(x=>{
+    const isTrc20=x.payment_method==='usdt'&&x.network==='trc20';
+    const expiryLabel=x.status==='activated'?'Payment confirmed':x.status==='rejected'?'Payment rejected':(trc20TimeLeft(x.crypto_expires_at)>0?'':'Checkout expired');
+    const expiryStatus=x.status==='pending'?`<p class='pst pending' data-trc20-expiry='${esc(x.crypto_expires_at||'')}'>${esc(expiryLabel)}</p>`:`<p class='pst ${esc(x.status)}'>${esc(expiryLabel)}</p>`;
+    const details=isTrc20&&x.deposit_address?`<div class='row'><span>Deposit address</span><b style='overflow-wrap:anywhere'>${esc(x.deposit_address)}</b></div>${expiryStatus}<button class='btn mini' style='margin-top:8px' data-act='viewTrc20Checkout' data-id='${esc(x.id)}'>View deposit details</button>`:'';
+    return `<div class='row'><div><b>${esc((PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label)} · ${x.currency==='GHS'?'GH₵':'$'}${esc(x.amount)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}</b><span class='pst ${esc(x.status)}'>${esc(lab[x.status]||x.status)}</span>${x.status==='rejected'&&x.admin_note?`<small class='pn'>${esc(x.admin_note)}</small>`:''}${details}</div><span>${esc(new Date(x.created_at).toLocaleDateString([],{dateStyle:'medium'}))}</span></div>`;
+  }).join('')}</div>`;
 }
 
 ACT.verifyTrc20=async(id,btn)=>{
