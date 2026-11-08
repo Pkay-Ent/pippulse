@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     // without consuming another derivation index.
     const { data: existingPayment, error: existingError } = await admin
       .from("payments")
-      .select("id,user_id,crypto_expires_at")
+      .select("id,user_id,plan,amount,currency,crypto_expires_at")
       .eq("crypto_checkout_id", checkoutId)
       .maybeSingle();
 
@@ -167,6 +167,10 @@ Deno.serve(async (req) => {
         success: true,
         duplicate: true,
         payment_id: existingPayment.id,
+        plan: existingPayment.plan,
+        amount: existingPayment.amount,
+        currency: existingPayment.currency,
+        network: "trc20",
         deposit_address: existingAddress.address,
         expires_at: existingPayment.crypto_expires_at,
       });
@@ -236,12 +240,33 @@ Deno.serve(async (req) => {
       return reply({ error: publicFailure(reason), reason }, status);
     }
 
+    if (typeof result.payment_id !== "string" || typeof result.deposit_address !== "string") {
+      throw new Error("Payment creation returned incomplete checkout details");
+    }
+
+    // Always return the persisted expiry, not a newly calculated approximation.
+    // This also covers concurrent retries where the SQL RPC returns an existing checkout.
+    const { data: payment, error: paymentReadError } = await admin
+      .from("payments")
+      .select("plan,amount,currency,crypto_expires_at")
+      .eq("id", result.payment_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (paymentReadError || !payment?.crypto_expires_at) {
+      throw new Error("Could not load the persisted checkout expiry");
+    }
+
     return reply({
       success: true,
-      payment_id: result.payment_id,
-      deposit_address: result.deposit_address,
-      expires_at: result.expires_at,
       duplicate: result.duplicate === true,
+      payment_id: result.payment_id,
+      plan: payment.plan,
+      amount: payment.amount,
+      currency: payment.currency,
+      network: "trc20",
+      deposit_address: result.deposit_address,
+      expires_at: payment.crypto_expires_at,
     });
   } catch (error) {
     console.error(
