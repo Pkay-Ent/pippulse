@@ -312,6 +312,11 @@ label{display:block;margin:.85rem 0 .35rem;font-size:.82rem;font-weight:600;colo
 input,select{width:100%;padding:.75rem .9rem;border-radius:.75rem;border:1px solid var(--line2);background:var(--bg);color:var(--tx);font:inherit;font-size:15px;transition:border-color .2s,box-shadow .2s}
 input:focus,select:focus{border-color:var(--gold);outline:0;box-shadow:0 0 0 3px var(--gold-glow)}
 .hint{margin:.4rem 0 0;font-size:.8rem;color:var(--tx2);line-height:1.4}
+.password-wrap{display:flex;align-items:stretch;gap:.45rem}
+.password-wrap input{flex:1;min-width:0;width:auto}
+.password-toggle{flex:none;min-width:4.2rem;padding:.65rem .8rem;border:1px solid var(--line2);border-radius:.75rem;background:var(--s2);color:var(--gold);font:600 .88rem var(--f);cursor:pointer}
+.password-toggle:hover{background:var(--s3);border-color:rgba(245,192,66,.4)}
+.password-toggle:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .err{margin:.85rem 0 0;padding:.6rem .8rem;border-radius:.65rem;background:var(--red-bg);border:1px solid rgba(239,68,68,.3);color:#FCA5A5;font-size:.85rem}
 .box a{color:var(--gold);text-decoration:none;font-weight:600}
 .box a:hover{text-decoration:underline}
@@ -594,7 +599,10 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <input id="a-email" type="text" inputmode="email" autocomplete="email" placeholder="you@example.com">
   
   <label for="a-pw">Password</label>
-  <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
+  <div class="password-wrap" id="a-pw-wrap">
+    <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
+    <button class="password-toggle" id="a-pw-toggle" type="button" data-act="toggleSignupPassword" aria-controls="a-pw" aria-label="Show password" aria-pressed="false">Show</button>
+  </div>
   
   <p class="err" id="a-err" role="alert" hidden></p>
   <p class='hint' id='a-legal' hidden>By creating an account you agree to the <a href='legal.html#terms' target='_blank' rel='noopener'>Terms</a>, <a href='legal.html#privacy' target='_blank' rel='noopener'>Privacy Policy</a> and <a href='legal.html#risk' target='_blank' rel='noopener'>Risk Disclosure</a>.</p>
@@ -1432,6 +1440,8 @@ function authUI0(){
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
   $('a-pw').autocomplete=su?'new-password':'current-password';
+  $('a-pw-toggle').hidden=!su;
+  $('a-pw').type='password';$('a-pw-toggle').textContent='Show';$('a-pw-toggle').setAttribute('aria-label','Show password');$('a-pw-toggle').setAttribute('aria-pressed','false');
   $('a-sw').innerHTML=su?'Already have an account? <a href="#" onclick="S.mode=\'login\';authUI();return false">Log in</a>':'New to PipPulse Gold? <a href="#" onclick="S.mode=\'signup\';authUI();return false">Create an account</a>';
 }
 let fails=0,lockUntil=0;
@@ -1493,6 +1503,14 @@ async function logout(){await sb.auth.signOut();S.seen.clear();toast('You have b
 
 /* ===== v3.0: plans from the database, payments, admin dashboard, password reset ===== */
 const ACT={};
+ACT.toggleSignupPassword=()=>{
+  if(S.mode!=='signup')return;
+  const input=$('a-pw'),toggle=$('a-pw-toggle'),show=input.type==='password';
+  input.type=show?'text':'password';
+  toggle.textContent=show?'Hide':'Show';
+  toggle.setAttribute('aria-label',show?'Hide password':'Show password');
+  toggle.setAttribute('aria-pressed',show?'true':'false');
+};
 let fgUntil=0,resendAt=0;
 S.payments=[];S.pay={};S.pendingEmail=null;S.payPlan=null;
 S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},msg:''};
