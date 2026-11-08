@@ -1338,7 +1338,7 @@ function renderPlans(){
         <span><h4>${p.label}${save>0?`<span class="save">Save ${save}%</span>`:''}</h4><small>${p.note}${pm}</small></span>
         <span class="price"><i>${gh?'GH₵':'$'}</i>${gh?p.ghs:p.usd}<small>${gh?'$'+p.usd:'GH₵'+p.ghs}</small></span></button>`}).join('')}</div>
     <div class="paybar"><div><small id="pb-m">${gh?'Pay with Mobile Money':'Pay with USDT'}</small><b id="pb-p">${gh?'GH₵'+sel.ghs:'$'+sel.usd}</b></div><button class="btn gold" id="pb-b" onclick="buy()">Continue with ${sel.label}</button></div>
-    <div class="note">Ghanaian Mobile Money payments are processed through Paystack. USDT TRC20 checkout provides a unique deposit address with a 15-minute payment window and automatic blockchain monitoring.</div>
+    <div class="note">Ghanaian Mobile Money payments are processed through Paystack. USDT TRC20 checkout provides a unique deposit address and a 15-minute payment window. Blockchain monitoring is being completed; do not send funds until it is confirmed ready.</div>
     <p class="legal">Signals are market commentary, not financial advice. Gold trading carries substantial risk.</p>`;
 }
 function selectPlan(id){
@@ -1587,10 +1587,10 @@ function renderTrc20Checkout(data){
     <div class='card' data-trc20-checkout>
       <p class='lbl'>Your unique deposit address</p>
       <div class='addr'><span style='overflow-wrap:anywhere'>${esc(data.deposit_address||'')}</span><button class='btn mini' data-copytext='${esc(data.deposit_address||'')}'>Copy</button></div>
-      <p class='hint'>Send exactly <b>${esc(amountText)}</b>. Do not send any other token or use another network. Network fees are paid separately.</p>
+      <p class='hint'>Required amount: <b>${esc(amountText)}</b>. Do not transfer funds yet; blockchain detection and automatic activation are not installed. Use only USDT on TRC20 once we confirm monitoring is ready.</p>
       <p class='hint'><b>15-minute payment window</b></p>
       <p class='pst pending' ${terminal?'':"data-trc20-expiry='"+esc(expiry)+"'"}>${statusText}</p>
-      <p class='hint'>After a valid transfer is detected and confirmed, your subscription activates automatically. If the timer expires, this address will still be monitored; any late transfer will be recorded and may need review.</p>
+      <p class='hint'>Blockchain detection is not enabled yet. Do not send funds until PipPulse confirms it is ready. This address remains assigned to this payment; once monitoring is installed, late transfers can be identified for review.</p>
       <div data-trc20-expired-actions ${expired&&!terminal?'':'hidden'}>
         <button class='btn gold' data-act='trc20Start'>Start a new checkout</button>
       </div>
@@ -1671,7 +1671,7 @@ function renderPay(){
       opts.push(`<button class='opt' data-act='paystackMomoOpen'><span class='oi'>${IC_PH}</span><span><b>Mobile Money</b><small>Pay with MTN, Telecel or AT Money. Receive a payment prompt on your phone.</small></span><span class='ob'>Instant</span></button>`);
     }
     if(hasMomo)opts.push(`<button class='opt' data-act='payOpen' data-id='momo'><span class='oi'>${IC_PH}</span><span><b>Mobile Money transfer</b><small>Send to our MTN, Telecel or AT number, then enter your transaction ID.</small></span><span class='ob m'>We confirm</span></button>`);
-    if(hasUsdt)opts.push(`<button class='opt' data-act='trc20Start'><span class='oi'>${IC_COIN}</span><span><b>USDT on TRC20</b><small>Pay $${esc(p.usd)} USD. Get a unique deposit address and pay within 15 minutes.</small></span><span class='ob'>Automatic</span></button>`);
+    if(hasUsdt)opts.push(`<button class='opt' data-act='trc20Start'><span class='oi'>${IC_COIN}</span><span><b>USDT on TRC20</b><small>Pay $${esc(p.usd)} USD. Get a unique address with a 15-minute checkout. Do not send funds yet; monitoring setup is still in progress.</small></span><span class='ob'>Unique address</span></button>`);
     $('pay-body').innerHTML=head+(opts.length?`<p class='lbl'>Choose how you want to pay</p><div class='opts'>${opts.join('')}</div>`:`<div class='note'>Payment options have not been set up yet. ${d.support_contact?'Contact '+esc(d.support_contact)+'.':'Please check back soon.'}</div>`)+`<button class='btn' data-act='closeSheet' data-id='pay'>Close</button><p class='hint'>Never share your password with anyone. We will never ask for it.</p>`;
     return;
   }
