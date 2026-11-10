@@ -600,9 +600,10 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   
   <label for="a-pw">Password</label>
   <div class="password-wrap" id="a-pw-wrap">
-    <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="At least 8 characters">
+    <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="Use a strong password">
     <button class="password-toggle" id="a-pw-toggle" type="button" data-act="toggleSignupPassword" aria-controls="a-pw" aria-label="Show password" aria-pressed="false">Show</button>
   </div>
+  <p class="hint" id="a-pw-guidance" hidden>Use at least 8 characters with an uppercase letter, a lowercase letter, a number and a symbol. Example: <strong>1Vensa@123</strong> — this is only an example; create your own unique password and do not reuse it.</p>
   
   <p class="err" id="a-err" role="alert" hidden></p>
   <p class='hint' id='a-legal' hidden>By creating an account you agree to the <a href='legal.html#terms' target='_blank' rel='noopener'>Terms</a>, <a href='legal.html#privacy' target='_blank' rel='noopener'>Privacy Policy</a> and <a href='legal.html#risk' target='_blank' rel='noopener'>Risk Disclosure</a>.</p>
@@ -898,24 +899,6 @@ async function setPushSubscription(){
     toast("Phone notifications enabled on this device.");renderNotifications();
   }catch(e){toast(e.message||"Could not enable phone notifications.");}
 }
-async function disablePushSubscription(){
-  try{
-    const reg=await getPushRegistration(),sub=await reg.pushManager.getSubscription();
-    if(!sub)return;
-    const{data:{session}}=await sb.auth.getSession();
-    const response=await fetch(SB_URL+"/functions/v1/send-signal-push",{
-      method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+session.access_token},
-      body:JSON.stringify({action:"unsubscribe",endpoint:sub.endpoint})
-    });
-    const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not disable phone alerts.");
-    await sub.unsubscribe();toast("Phone notifications disabled on this device.");renderNotifications();
-  }catch(e){toast(e.message||"Could not disable phone notifications.");}
-}
-async function togglePhoneNotifications(){
-  if(!pushSupported())return toast("This browser/device does not support web push. On iPhone, add PipPulse to your Home Screen first.");
-  const reg=await getPushRegistration(),sub=await reg.pushManager.getSubscription();
-  if(sub)await disablePushSubscription();else await setPushSubscription();
-}
 function renderNotifications(){
   const btn=$('notif-btn'),panel=$('notif-panel');if(!btn||!panel)return;
   const allowed=notificationEligible();btn.hidden=!allowed;
@@ -925,7 +908,7 @@ function renderNotifications(){
   btn.innerHTML='<svg class="i" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>'+(unread?'<span class="ncount">'+(unread>99?'99+':unread)+'</span>':'');
   btn.setAttribute('aria-label',unread?'Notifications, '+unread+' unread':'Notifications');
   panel.hidden=!S.notificationOpen;
-  panel.innerHTML='<div class="notif-head"><b>Notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable / disable phone alerts</button><button class="btn small" type="button" data-sound-toggle>Sound: '+(notificationSoundEnabled?'On':'Off')+'</button><small>Phone alerts work when permitted by your device. In-app sound plays while PipPulse is open.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
+  panel.innerHTML='<div class="notif-head"><b>Notifications</b><small>'+unread+' unread</small></div><div class="push-settings"><button class="btn small" type="button" data-push-toggle>Enable notifications</button><button class="btn small" type="button" data-sound-toggle>Sound: '+(notificationSoundEnabled?'On':'Off')+'</button><small>Allow notifications in your device or browser settings. To turn them off, change your device or browser notification permissions. In-app sound plays while PipPulse is open.</small></div>'+(S.notifications.length?S.notifications.map(n=>{
     const isNew=!S.notificationReads.has(n.kind+':'+n.id);
     return '<button class="notif-item '+(isNew?'unread':'')+'" data-notification="'+esc(n.id)+'" data-notification-kind="'+n.kind+'"><b>'+esc(n.title)+'</b><small>'+esc(n.body)+'</small><time>'+esc(new Date(n.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))+'</time></button>';
   }).join(''):'<div class="notif-empty">No notifications yet.</div>');
@@ -1440,6 +1423,7 @@ function authUI0(){
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
   $('a-pw').autocomplete=su?'new-password':'current-password';
+  $('a-pw-guidance').hidden=!su;
   $('a-pw-toggle').hidden=!su;
   $('a-pw').type='password';$('a-pw-toggle').textContent='Show';$('a-pw-toggle').setAttribute('aria-label','Show password');$('a-pw-toggle').setAttribute('aria-pressed','false');
   $('a-sw').innerHTML=su?'Already have an account? <a href="#" onclick="S.mode=\'login\';authUI();return false">Log in</a>':'New to PipPulse Gold? <a href="#" onclick="S.mode=\'signup\';authUI();return false">Create an account</a>';
@@ -1469,7 +1453,7 @@ async function submitAuth(){
       if(!country)throw new Error('Select your country.');
       const phone=normPhone($('a-phone').value,country);
       if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., +233 24 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
-      if(pw.length<8||!/[A-Za-z]/.test(pw)||!/\d/.test(pw))throw new Error('Password needs at least 8 characters, with a letter and a number.');
+      if(pw.length<8||!/[A-Z]/.test(pw)||!/[a-z]/.test(pw)||!/[0-9]/.test(pw)||!/[^ws]/.test(pw))throw new Error('Use at least 8 characters with an uppercase letter, lowercase letter, number and symbol.');
       const{data:avail,error:ue}=await sb.rpc('is_username_available',{p_username:username});
       if(ue)throw new Error('We could not verify that username is available. Please try again.');
       if(avail!==true)throw new Error('That username is already taken. Please choose another.');
@@ -2143,7 +2127,7 @@ document.addEventListener('touchend',e=>{
 document.addEventListener('touchcancel',()=>{if(chatLongPressTimer)clearTimeout(chatLongPressTimer);chatTouchStart=null},{passive:true});
 /* Delegated clicks: ids travel in data-attributes, never inside inline JS strings */
 document.addEventListener('click',e=>{
-  const push=e.target.closest('[data-push-toggle]');if(push){togglePhoneNotifications();return}
+  const push=e.target.closest('[data-push-toggle]');if(push){setPushSubscription();return}
   const sound=e.target.closest('[data-sound-toggle]');if(sound){toggleNotificationSound();return}
   const note=e.target.closest('[data-notification]');if(note){openNotification(note.dataset.notification,note.dataset.notificationKind||'signal');return}
   const u=e.target.closest('[data-unlock]');if(u)return unlock(u.dataset.unlock,u);
