@@ -1429,6 +1429,7 @@ function authUI0(){
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
   $('a-pw').autocomplete=su?'new-password':'current-password';
+  $('a-pw').placeholder=su?'1Vensa@123':'Enter your password';
   $('a-pw-guidance').hidden=!su;
   $('a-pw-confirm-label').hidden=!su;
   $('a-pw-confirm-wrap').hidden=!su;
