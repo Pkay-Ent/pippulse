@@ -137,7 +137,9 @@ begin
     if new.image_path not like
         new.conversation_id::text || '/' || (select auth.uid())::text || '/%.enc'
        or new.image_iv is null
-       or new.image_iv !~ '^[A-Za-z0-9+/]{16}
+       or new.image_iv !~ '^[A-Za-z0-9+/]{16}$'
+       or new.image_mime_type not in ('image/png', 'image/jpeg', 'image/webp') then
+      raise exception 'The encrypted image attachment is invalid.';
     end if;
   elsif new.image_iv is not null or new.image_mime_type is not null then
     raise exception 'Unexpected image encryption metadata.';
