@@ -498,6 +498,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
 #s-private-chat .private-chat-avatar{width:2.65rem;height:2.65rem;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#ffe89a,#d99a19);color:#332000;font-weight:900;font-size:1.1rem;flex:none}
 #s-private-chat .private-chat-heading{flex:1;min-width:0}#s-private-chat .private-chat-heading h3{margin:0;font-size:1rem}#s-private-chat .private-chat-heading small{display:block;color:var(--mut);font-size:.72rem;margin-top:.15rem}
 #s-private-chat .private-chat-feed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:.75rem .1rem;display:flex;flex-direction:column;gap:.35rem}
+.private-security-overlay{position:fixed;inset:0;z-index:140;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(2,6,15,.88);backdrop-filter:blur(9px)}.private-security-overlay[hidden]{display:none!important}.private-security-card{width:min(100%,30rem);max-height:90dvh;overflow:auto;padding:1.35rem;border:1px solid rgba(245,192,66,.35);border-radius:1.2rem;background:var(--s1);box-shadow:0 24px 80px rgba(0,0,0,.55)}.private-security-mark{width:2.8rem;height:2.8rem;display:grid;place-items:center;border-radius:.9rem;background:var(--s2);font-size:1.35rem}.private-security-card h3{margin:.8rem 0 .35rem;font:700 1.35rem var(--fd)}.private-security-card>p{margin:.25rem 0 1rem;color:var(--tx2);font-size:.88rem;line-height:1.5}.private-security-card input{margin-top:.35rem}.private-security-card .btn{width:100%;margin-top:.8rem}.private-security-card>small{display:block;margin-top:1rem;color:var(--mut);font-size:.72rem;text-align:center;line-height:1.4}
 #s-private-chat .private-chat-feed .chat-msg{max-width:min(84%,34rem);margin:.2rem 0;padding:.65rem .8rem;border:1px solid var(--line);border-radius:1rem 1rem 1rem .25rem;background:var(--s1);overflow-wrap:anywhere}
 #s-private-chat .private-chat-feed .chat-msg.mine{align-self:flex-end;border-color:rgba(245,192,66,.4);border-radius:1rem 1rem .25rem 1rem;background:var(--s2)}
 #s-private-chat .private-chat-feed .chat-msg p{margin:.25rem 0 0;white-space:pre-wrap;line-height:1.45;font-size:.9rem}
@@ -686,6 +687,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
 </div></div>
 
 <div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small id="private-chat-subtitle">Private conversation · Only you and the other participant</small></div><button class="btn mini" id="private-chat-verify" data-act="privateChatVerify">Verify safety code</button><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small id="private-chat-note" class="private-chat-note">End-to-end encrypted. Your recovery passphrase is required to unlock chats on new devices.</small></div></div>
+<div class="private-security-overlay" id="private-security-overlay" hidden><div class="private-security-card" role="dialog" aria-modal="true" aria-labelledby="private-security-title"><div class="private-security-mark">🔐</div><h3 id="private-security-title">Secure private chat</h3><p id="private-security-description"></p><form id="private-security-form" onsubmit="return false;"><div id="private-security-fields"></div><p class="err" id="private-security-error" role="alert" hidden></p><button class="btn gold" id="private-security-submit" type="button" data-act="privateChatSecuritySubmit">Continue</button><button class="btn" id="private-security-cancel" type="button" data-act="privateChatSecurityCancel">Cancel</button></form><small>Your passphrase stays on this device. It is never sent to PipPulse.</small></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -2012,6 +2014,7 @@ async function loadPrivateConversations({silent=false}={}){
 let privateChatId=null,privateChatFile=null,privateChatPreview=null,privateChatChannel=null,privateChatBusy=false,privateChatOtherName='PipPulse Admin';
 let privateChatIdentity=null,privateChatCryptoKey=null,privateChatPeerFingerprint='',privateChatImageUrls=[],privateChatPeerVerified=false,privateChatVerifyKey='';
 const PRIVATE_CHAT_KDF_ITERATIONS=310000;
+let privateChatSecurityConfig=null,privateChatSecurityBusy=false,privateChatSecurityResolver=null,privateChatOpening=false;
 const privateChatEncoder=new TextEncoder();
 const privateChatDecoder=new TextDecoder();
 
@@ -2034,6 +2037,43 @@ async function privateChatFingerprint(jwk){
  const stable=JSON.stringify({kty:jwk.kty,crv:jwk.crv,x:jwk.x,y:jwk.y});
  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode(stable)));
  return Array.from(digest).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join(' ');
+}
+function privateChatSecurityDialog(config){
+ const overlay=$('private-security-overlay'),form=$('private-security-form'),fields=$('private-security-fields'),error=$('private-security-error'),submit=$('private-security-submit');
+ if(!overlay||!form)throw new Error('The secure setup panel is unavailable. Refresh PipPulse and try again.');
+ if(privateChatSecurityResolver)throw new Error('A private-chat security step is already open. Finish or cancel it first.');
+ privateChatSecurityConfig=config;privateChatSecurityBusy=false;
+ $('private-security-title').textContent=config.title;
+ $('private-security-description').textContent=config.description;
+ fields.innerHTML=config.fields.map(f=>'<label for="private-security-'+esc(f.name)+'">'+esc(f.label)+'</label><input id="private-security-'+esc(f.name)+'" name="'+esc(f.name)+'" type="password" autocomplete="off" required maxlength="256" placeholder="'+esc(f.placeholder||'')+'">').join('');
+ error.hidden=true;error.textContent='';submit.disabled=false;submit.textContent=config.submitLabel||'Continue';overlay.hidden=false;
+ setTimeout(()=>fields.querySelector('input')?.focus(),40);
+ return new Promise((resolve,reject)=>{privateChatSecurityResolver={resolve,reject}});
+}
+async function privateChatSecuritySubmit(e){
+ if(e)e.preventDefault();
+ if(!privateChatSecurityConfig||!privateChatSecurityResolver||privateChatSecurityBusy)return;
+ const cfg=privateChatSecurityConfig,values={};
+ cfg.fields.forEach(f=>values[f.name]=String($('private-security-'+f.name)?.value||''));
+ const error=$('private-security-error'),submit=$('private-security-submit');
+ privateChatSecurityBusy=true;submit.disabled=true;submit.textContent='Please wait…';error.hidden=true;
+ try{
+  const done=await cfg.onSubmit(values);
+  if(done===true){
+   const resolver=privateChatSecurityResolver;privateChatSecurityResolver=null;privateChatSecurityConfig=null;
+   $('private-security-overlay').hidden=true;resolver.resolve(true);return;
+  }
+ }catch(err){error.textContent=friendly(err);error.hidden=false}
+ finally{
+  privateChatSecurityBusy=false;
+  if(privateChatSecurityResolver){submit.disabled=false;submit.textContent=cfg.submitLabel||'Continue'}
+ }
+}
+function privateChatSecurityCancel(){
+ if(privateChatSecurityBusy)return toast('Please wait for the security step to finish.');
+ const resolver=privateChatSecurityResolver;privateChatSecurityResolver=null;privateChatSecurityConfig=null;
+ $('private-security-overlay').hidden=true;
+ if(resolver)resolver.reject(new Error('Private-chat security setup was cancelled.'));
 }
 async function privateChatSaveNewIdentity(passphrase){
  const pair=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
@@ -2077,20 +2117,26 @@ async function privateChatEnsureIdentity(){
  const q=await sb.from('private_chat_key_vault').select('wrapped_private_key,salt,iv,kdf_iterations,key_version').eq('user_id',S.user.id).maybeSingle();
  if(q.error)throw q.error;
  if(!q.data){
-  const pass=window.prompt('Create a private-chat recovery passphrase (at least 12 characters). You will need it on every new device and after refreshing this browser.');
-  if(pass===null)throw new Error('Encryption setup was cancelled.');
-  if(pass.length<12)throw new Error('Use a recovery passphrase with at least 12 characters.');
-  const confirmPass=window.prompt('Re-enter your private-chat recovery passphrase.');
-  if(confirmPass!==pass)throw new Error('The recovery passphrases did not match. Please open the chat and try again.');
-  return privateChatSaveNewIdentity(pass);
+  return privateChatSecurityDialog({
+   title:'Create your private-chat key',
+   description:'Create a recovery passphrase with at least 12 characters. It protects your private key and is needed after refreshing this browser or using another device. PipPulse cannot recover it.',
+   fields:[{name:'passphrase',label:'Recovery passphrase',placeholder:'At least 12 characters'},{name:'confirm',label:'Confirm recovery passphrase',placeholder:'Enter it again'}],
+   submitLabel:'Create and protect key',
+   onSubmit:async values=>{
+    if(values.passphrase.length<12)throw new Error('Use a recovery passphrase with at least 12 characters.');
+    if(values.passphrase!==values.confirm)throw new Error('The passphrases do not match. Please check both fields.');
+    await privateChatSaveNewIdentity(values.passphrase);
+    return true;
+   }
+  });
  }
- for(let attempt=0;attempt<3;attempt++){
-  const pass=window.prompt('Enter your private-chat recovery passphrase to unlock your encrypted conversations.');
-  if(pass===null)throw new Error('Private chat remains locked. Your passphrase was not entered.');
-  try{return await privateChatUnlockIdentity(pass,q.data)}
-  catch(e){if(attempt===2)throw e;alert('The passphrase did not unlock this key. Please try again.')}
- }
- throw new Error('Could not unlock your private-chat key.');
+ return privateChatSecurityDialog({
+  title:'Unlock your private-chat key',
+  description:'Enter the recovery passphrase you created for this account. It unlocks your encrypted private chats on this device.',
+  fields:[{name:'passphrase',label:'Recovery passphrase',placeholder:'Enter your recovery passphrase'}],
+  submitLabel:'Unlock private chat',
+  onSubmit:async values=>{await privateChatUnlockIdentity(values.passphrase,q.data);return true;}
+ });
 }
 async function privateChatConversationKey(conversationId,peerId){
  const identity=await privateChatEnsureIdentity();
@@ -2127,7 +2173,9 @@ async function privateChatDecrypt(value,iv,key){
  return crypto.subtle.decrypt({name:'AES-GCM',iv:privateChatUnB64(iv)},key,privateChatUnB64(value));
 }
 async function privateChatOpen(id){
- if(!S.user||!id)return;
+ if(!S.user||!id||privateChatOpening)return;
+ privateChatOpening=true;
+ try{
  if(privateChatChannel){sb.removeChannel(privateChatChannel);privateChatChannel=null}
  privateChatId=id;privateChatCryptoKey=null;
  $('private-chat-feed').innerHTML='<div class="empty">Preparing end-to-end encryption…</div>';openSheet('private-chat');
@@ -2152,6 +2200,7 @@ async function privateChatOpen(id){
   $('private-chat-subtitle').textContent='Encryption setup required';
   $('private-chat-note').textContent='Your recovery passphrase is never sent to PipPulse.';
  }
+ finally{privateChatOpening=false}
 }
 async function privateChatLoad(){
  if(!privateChatId||!privateChatCryptoKey)return;
@@ -2191,16 +2240,23 @@ async function privateChatLoad(){
 }
 async function privateChatVerify(){
  if(!privateChatCryptoKey||!privateChatVerifyKey||!privateChatPeerFingerprint)return;
- const entered=window.prompt('Compare the safety code shown here with the code on the other participant’s device. Enter their code exactly to verify this conversation.');
- if(entered===null)return;
- const normalized=v=>String(v).toUpperCase().replace(/[^A-F0-9]/g,'');
- if(normalized(entered)!==normalized(privateChatPeerFingerprint))return toast('The safety codes do not match. Do not send sensitive messages.');
- try{localStorage.setItem(privateChatVerifyKey,privateChatPeerFingerprint)}catch(_){return toast('This browser could not save the verification. Please enable local storage and try again.')}
- privateChatPeerVerified=true;
- $('private-chat-subtitle').textContent='Verified E2EE · Safety code: '+privateChatPeerFingerprint;
- $('private-chat-verify').textContent='Code verified';$('private-chat-verify').disabled=true;
- $('private-chat-note').textContent='Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.';
- toast('Safety code verified on this device.');
+ return privateChatSecurityDialog({
+  title:'Verify this conversation',
+  description:'Compare the safety code below with the code shown on the other participant’s device using a separate trusted channel. Enter their code here. Only verify if every character matches.',
+  fields:[{name:'safetyCode',label:'Other participant’s safety code',placeholder:'Paste or type their code'}],
+  submitLabel:'Verify matching code',
+  onSubmit:async values=>{
+   const normalized=v=>String(v).toUpperCase().replace(/[^A-F0-9]/g,'');
+   if(normalized(values.safetyCode)!==normalized(privateChatPeerFingerprint))throw new Error('The safety codes do not match. Do not send sensitive messages until they match.');
+   try{localStorage.setItem(privateChatVerifyKey,privateChatPeerFingerprint)}catch(_){throw new Error('This browser could not save verification. Enable local storage and try again.')}
+   privateChatPeerVerified=true;
+   $('private-chat-subtitle').textContent='Verified E2EE · Safety code: '+privateChatPeerFingerprint;
+   $('private-chat-verify').textContent='Code verified';$('private-chat-verify').disabled=true;
+   $('private-chat-note').textContent='Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.';
+   toast('Safety code verified on this device.');
+   return true;
+  }
+ });
 }
 function privateChatClearImage(){
  if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);
@@ -2238,6 +2294,8 @@ async function privateChatSend(){
  finally{privateChatBusy=false;$('private-chat-send').disabled=false}
 }
 ACT.privateChatSend=()=>privateChatSend();
+ACT.privateChatSecuritySubmit=(_,e)=>privateChatSecuritySubmit(e);
+ACT.privateChatSecurityCancel=()=>privateChatSecurityCancel();
 ACT.privateChatVerify=()=>privateChatVerify();
 ACT.privateChatRemoveImage=()=>privateChatClearImage();
 ACT.privateOpen=id=>privateChatOpen(id);
