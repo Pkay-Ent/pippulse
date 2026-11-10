@@ -779,7 +779,8 @@ function show(v){
   document.documentElement.setAttribute('data-start-view',v);
   try{localStorage.setItem('pippulse_last_view',v)}catch(e){}
   $('v-admin').hidden=true;
-  if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat();loadPrivateConversations()}
+  if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat()}
+  if(v==='account'&&S.user)loadPrivateConversations({silent:true});
   VIEWS.forEach((x,i)=>{const on=x===v;$('v-'+x).hidden=!on;$('n-'+x).classList.toggle('on',on);if(on){$('ind').style.setProperty('--ix',i);if(x!=='signals'){const el=$('v-'+x);el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}}});
   scrollTo({top:0});
   /* Opening chat should always land on the newest messages, not the archive. */
@@ -1072,7 +1073,6 @@ function renderChat(){
   const replyMsg=chatReplyTo?messages.find(m=>m.id===chatReplyTo):null;
   const composerText=editMsg?editMsg.body:draft;
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
-    <div id="private-chat-section">${privateChatSectionHtml()}</div>
     <p class="chat-intro">Keep conversations respectful. Mention members with @username. Share trading screenshots responsibly.</p>
     <div class="chat-wrap">
       <div class="chat-feed" id="chat-feed" aria-live="polite">${S.chatLoading?'<div class="empty">Loading conversation…</div>':messages.length?messages.map(m=>{
@@ -1263,8 +1263,9 @@ async function refresh(manual){
       if(!(a.data&&a.data.is_admin))await loadPayments();
       if(a.error)S.error=friendly(a.error);
       await loadSignals();
+      await loadPrivateConversations({silent:true});
       if(notificationEligible()){await loadNotifications();watchNotifications();if(chatUserId!==S.user.id){stopChat();await loadChat();watchChat()}}else{S.notifications=[];S.notificationReads=new Set();stopWatchingNotifications()}
-    }else{S.access=null;S.profile=null;S.signals=[];S.payments=[];S.notifications=[];S.notificationReads=new Set();S.notificationOpen=false;S.chatMessages=[];S.chatLoading=false;stopWatchingNotifications();stopChat()}
+    }else{S.access=null;S.profile=null;S.signals=[];S.payments=[];S.notifications=[];S.notificationReads=new Set();S.notificationOpen=false;S.chatMessages=[];S.chatLoading=false;S.privateConversations=[];stopWatchingNotifications();stopChat()}
   }catch(e){S.error=friendly(e)}
   S.loading=false;rf.classList.remove('spin');render();
   if(!window.__pippulseViewRestored){window.__pippulseViewRestored=true;let last='signals';try{last=localStorage.getItem('pippulse_last_view')||'signals'}catch(e){}if(VIEWS.includes(last)&&!(last==='chat'&&!S.user))show(last)}
@@ -1414,6 +1415,7 @@ function renderAccount(){
       ${sms?`<div class="row"><span>${IC.b}SMS Alerts</span><b>On</b></div>`:''}
     </div>
     ${payList()}
+    <div id="private-chat-section">${privateChatSectionHtml()}</div>
     ${a.is_admin?`<button class='btn gold' data-act='adminOpen'>Admin dashboard</button>`:''}
     <button class="btn out" onclick="logout()">Log out</button>`;
 }
@@ -2229,6 +2231,7 @@ document.addEventListener('keydown',e=>{
   if(e.target&&e.target.id==='chat-input'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendChat();}
   if(e.key==='Escape')closeChatMenu();
 });
+document.addEventListener('keydown',e=>{if(e.target&&e.target.id==='private-chat-input'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();privateChatSend()}});
 document.addEventListener('input',e=>{
   if(!e.target||e.target.id!=='chat-input'||!chatChannel)return;
   sendChatTyping(true);if(chatTypingStopTimer)clearTimeout(chatTypingStopTimer);
