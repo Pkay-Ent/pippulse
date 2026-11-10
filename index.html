@@ -1675,14 +1675,14 @@ function renderPay(){
   if(S.payStep==='paystack_momo'){
     $('pay-body').innerHTML=`<button class='btn mini' data-act='payBack'>&lsaquo; Back</button>${head}
       <p class='lbl'>Mobile network</p>
-      <select id='ps-provider' aria-label='Mobile network'>
+      <select id='ps-provider' aria-label='Mobile network' onchange='updateMomoPhoneHint()'>
         <option value='mtn'>MTN Mobile Money</option>
         <option value='vod'>Telecel Cash</option>
         <option value='atl'>AT Money</option>
       </select>
       <label for='ps-phone'>Mobile Money number</label>
       <input id='ps-phone' type='tel' inputmode='tel' autocomplete='tel' maxlength='20' placeholder='024 000 0000' value=''>
-      <p class='hint'>Enter the number linked to your Mobile Money wallet. Paystack will send a payment prompt to that phone. Approve it on your phone to complete payment.</p>
+      <p class='hint' id='ps-phone-hint'>Enter your MTN number (example: 024 000 0000). Paystack will send a payment prompt to that phone. Approve it on your phone to complete payment.</p>
       <p class='err' id='ps-err' role='alert' hidden></p>
       <button class='btn gold' data-act='paystackMomoStart'>Send payment prompt</button>
       <button class='btn' data-act='closeSheet' data-id='pay'>Cancel</button>`;
@@ -1727,9 +1727,22 @@ function renderPay(){
 }
 ACT.payOpen=id=>{if(id!=='momo')return;S.payStep='manual';S.payMethod=id;S.payNet=null;renderPay()};
 ACT.payBack=()=>{S.payStep='choose';renderPay()};
+/* Update the sample number to match the selected Ghana mobile network. */
+function updateMomoPhoneHint(){
+  const provider=$('ps-provider')?.value||'mtn';
+  const input=$('ps-phone'),hint=$('ps-phone-hint');
+  const examples={
+    mtn:{placeholder:'024 000 0000',label:'MTN number (example: 024 000 0000)'},
+    vod:{placeholder:'020 000 0000',label:'Telecel Cash number (example: 020 000 0000)'},
+    atl:{placeholder:'057 000 0000',label:'AT Money number (example: 057 000 0000)'}
+  };
+  const selected=examples[provider]||examples.mtn;
+  if(input)input.placeholder=selected.placeholder;
+  if(hint)hint.textContent='Enter your '+selected.label+'. Paystack will send a payment prompt to that phone. Approve it on your phone to complete payment.';
+}
 /* Paystack direct Mobile Money charge. Provider codes are Paystack's Ghana codes:
    MTN=mtn, Telecel=vod, AT Money=atl. Amount is always read server-side. */
-ACT.paystackMomoOpen=()=>{S.payStep='paystack_momo';renderPay()};
+ACT.paystackMomoOpen=()=>{S.payStep='paystack_momo';renderPay();updateMomoPhoneHint()};
 ACT.paystackMomoStart=async(_,btn)=>{
   const phone=($('ps-phone')||{}).value||'';
   const provider=($('ps-provider')||{}).value||'';
