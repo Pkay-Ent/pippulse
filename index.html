@@ -1065,7 +1065,7 @@ function renderChat(){
         </div>
         <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 32 32" aria-hidden="true">${editMsg?'<path d="m7 17 6 6L27 9" fill="none" stroke="#5c3900" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"/><path d="m7 15 6 6L27 7" fill="none" stroke="#ffd45c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>':'<defs><linearGradient id="sendGold" x1="4" y1="3" x2="28" y2="29"><stop stop-color="#fff2b0"/><stop offset=".42" stop-color="#ffd45c"/><stop offset="1" stop-color="#d58a13"/></linearGradient><linearGradient id="sendSide" x1="8" y1="8" x2="25" y2="28"><stop stop-color="#b86c08"/><stop offset="1" stop-color="#704006"/></linearGradient></defs><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendSide)" transform="translate(1 2)"/><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendGold)" stroke="#fff0b0" stroke-width="1.1" stroke-linejoin="round"/><path d="m6 19 22-16-15 14" fill="none" stroke="#fff9d8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m13 17 2 6 4-10" fill="#e7a52c" stroke="#b96f08" stroke-width=".8" stroke-linejoin="round"/>'}</svg></button>
       </form>
-      <p class="chat-status">Images: PNG, JPG or WebP, up to 5 MB. Messages are visible to signed-in members.</p>
+      <p class="chat-status">Images: PNG, JPG or WebP, up to 10 MB. Messages are visible to signed-in members.</p>
     </div>
     <div class="chat-context" id="chat-context" hidden></div>`;
   updateChatTyping();
@@ -1138,7 +1138,7 @@ async function sendChat(){
   const input=$('chat-input'),btn=$('chat-send'),body=(input?.value||'').trim(),file=chatSelectedFile||$('chat-image')?.files?.[0],editing=chatEditId;
   if(!body&&!file&&!editing)return toast('Write a message or choose a photo.');
   if(body.length>1000)return toast('Messages are limited to 1000 characters.');
-  if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5242880))return toast('Choose a PNG, JPG or WebP image up to 5 MB.');
+  if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10485760))return toast('Choose a PNG, JPG or WebP image up to 10 MB.');
   if(chatBusy)return;
   chatBusy=true;if(btn){btn.disabled=true;btn.setAttribute('aria-label',editing?'Saving message':'Sending message')}
   let uploadedPath=null;
@@ -2146,7 +2146,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
     const f=e.target.files[0];
-    if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>5242880){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 5 MB.');return}
+    if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>5242880){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
     if(chatPreviewUrl)URL.revokeObjectURL(chatPreviewUrl);
     chatSelectedFile=f;chatPreviewUrl=URL.createObjectURL(f);
     renderChat();
