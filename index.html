@@ -668,6 +668,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <button class='btn gold' data-act='resetSave'>Save new password</button>
 </div></div>
 
+<div class="sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box"><div class="grab"></div><div class="sec-h"><h3 id="private-chat-title">Private conversation</h3><button class="btn mini" data-act="closeSheet" data-id="private-chat">Close</button></div><p class="hint">Only the two participants can read this conversation.</p><div id="private-chat-feed" style="max-height:42dvh;overflow:auto;padding:.25rem 0"></div><div id="private-chat-preview"></div><label for="private-chat-input">Message</label><textarea id="private-chat-input" rows="3" maxlength="2000" placeholder="Write a private message…"></textarea><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp"><small class="pn">Optional PNG, JPG or WebP image, up to 10 MB.</small><button class="btn gold" id="private-chat-send" data-act="privateChatSend">Send privately</button></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -1969,9 +1970,56 @@ ACT.adminTab=id=>{S.admin.tab=id;S.admin.msg='';renderAdmin();loadAdminTab()};
 ACT.adminFilter=id=>{S.admin.filter=id;loadAdminTab()};
 
 
-function adminMessagesHtml(){const people=S.admin.people||[];return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div>';} 
-async function adminMessagesLoad(){const{data,error}=await sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name');if(error)throw error;S.admin.people=data||[];}
+function adminMessagesHtml(){const people=S.admin.people||[];const convs=S.admin.conversations||[];const options=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('');const threads=convs.length?convs.map(c=>{const p=people.find(x=>x.id===c.user_id)||{};return '<button class="notif-item" style="width:100%;text-align:left" data-act="privateOpen" data-id="'+esc(c.id)+'"><b>'+esc(p.display_name||p.username||p.email||'Customer')+'</b><small>'+esc(p.email||'')+'</small></button>'}).join(''):'<div class="empty">No private conversations yet.</div>';return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div>';} 
+async function adminMessagesLoad(){const [p,c]=await Promise.all([sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name'),sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('admin_id',S.user.id).order('last_message_at',{ascending:false})]);if(p.error)throw p.error;if(c.error)throw c.error;S.admin.people=p.data||[];S.admin.conversations=c.data||[];}
 ACT.adminSendAnnouncement=async(_,btn)=>{const title=$('ann-title').value.trim(),body=$('ann-body').value.trim(),target=$('ann-target').value,ids=target==='selected'?Array.from($('ann-users').selectedOptions).map(o=>o.value):null;if(!title||!body)return toast('Enter an announcement title and message.');if(target==='selected'&&!ids.length)return toast('Select at least one customer.');btn.disabled=true;try{const{error}=await sb.rpc('admin_send_announcement',{p_title:title,p_body:body,p_recipient_ids:ids});if(error)throw error;$('ann-title').value='';$('ann-body').value='';toast('Announcement sent successfully.');}catch(e){toast('Could not send announcement: '+friendly(e));}finally{btn.disabled=false;}};
+
+
+let privateChatId=null,privateChatFile=null,privateChatPreview=null,privateChatChannel=null,privateChatBusy=false;
+async function privateChatOpen(id){
+ if(!S.user||!id)return;
+ if(privateChatChannel){sb.removeChannel(privateChatChannel);privateChatChannel=null}
+ privateChatId=id;$('private-chat-feed').innerHTML='<div class="empty">Loading conversation…</div>';openSheet('private-chat');
+ try{
+  const{data:c,error}=await sb.from('private_conversations').select('id,admin_id,user_id').eq('id',id).maybeSingle();if(error)throw error;
+  if(!c||![c.admin_id,c.user_id].includes(S.user.id))throw new Error('This conversation is not available to your account.');
+  const other=c.admin_id===S.user.id?c.user_id:c.admin_id;
+  const{data:p}=await sb.from('profiles').select('display_name,username').eq('id',other).maybeSingle();
+  $('private-chat-title').textContent=p?.display_name||p?.username||'Private conversation';
+  await privateChatLoad();
+  privateChatChannel=sb.channel('private-chat-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'private_messages',filter:'conversation_id=eq.'+id},()=>privateChatLoad()).subscribe();
+ }catch(e){$('private-chat-feed').innerHTML='<div class="empty">'+esc(friendly(e))+'</div>'}
+}
+async function privateChatLoad(){
+ if(!privateChatId)return;
+ const{data,error}=await sb.from('private_messages').select('id,sender_id,body,image_path,created_at').eq('conversation_id',privateChatId).order('created_at',{ascending:true}).limit(200);
+ if(error)return toast('Could not load private messages: '+friendly(error));
+ const rows=data||[];
+ await Promise.all(rows.map(async m=>{if(m.image_path){const{data:u,error:ie}=await sb.storage.from('private-chat-images').createSignedUrl(m.image_path,3600);m.image_url=!ie&&u?u.signedUrl:null}}));
+ const feed=$('private-chat-feed');if(!feed)return;
+ feed.innerHTML=rows.length?rows.map(m=>'<div class="card" style="margin:.4rem 0;padding:.7rem;max-width:92%;'+(m.sender_id===S.user.id?'margin-left:auto;border-color:rgba(245,192,66,.35)':'')+'"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p>'+(m.image_url?'<img src="'+esc(m.image_url)+'" alt="Private attachment" style="display:block;max-width:100%;max-height:240px;border-radius:.6rem;margin-top:.5rem">':'')+'<small class="pn">'+(m.sender_id===S.user.id?'You':'PipPulse')+' · '+esc(new Date(m.created_at).toLocaleString())+'</small></div>').join(''):'<div class="empty">This is the start of your private conversation.</div>';
+ feed.scrollTop=feed.scrollHeight;
+}
+function privateChatClearImage(){if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);privateChatPreview=null;privateChatFile=null;if($('private-chat-image'))$('private-chat-image').value='';if($('private-chat-preview'))$('private-chat-preview').innerHTML=''}
+async function privateChatSend(){
+ if(!privateChatId||!S.user||privateChatBusy)return;
+ const body=$('private-chat-input').value.trim(),file=privateChatFile;if(!body&&!file)return toast('Write a message or choose an image.');if(body.length>2000)return toast('Private messages are limited to 2000 characters.');
+ privateChatBusy=true;$('private-chat-send').disabled=true;let path=null;
+ try{
+  if(file){const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];path=privateChatId+'/'+S.user.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('private-chat-images').upload(path,file,{contentType:file.type,upsert:false});if(up.error)throw up.error}
+  const{error}=await sb.from('private_messages').insert({conversation_id:privateChatId,sender_id:S.user.id,body,image_path:path});if(error){if(path)await sb.storage.from('private-chat-images').remove([path]);throw error}
+  $('private-chat-input').value='';privateChatClearImage();await privateChatLoad();
+ }catch(e){toast('Could not send private message: '+friendly(e))}
+ finally{privateChatBusy=false;$('private-chat-send').disabled=false}
+}
+ACT.privateChatSend=()=>privateChatSend();
+ACT.privateChatRemoveImage=()=>privateChatClearImage();
+ACT.privateOpen=id=>privateChatOpen(id);
+ACT.adminStartPrivate=async(_,btn)=>{
+ const uid=$('private-person').value;if(!uid)return toast('Choose a customer first.');
+ btn.disabled=true;try{const{data,error}=await sb.rpc('admin_start_private_conversation',{p_user_id:uid});if(error)throw error;if(!data)throw new Error('Could not create conversation.');await privateChatOpen(data)}
+ catch(e){toast('Could not open private chat: '+friendly(e))}finally{btn.disabled=false}
+};
 
 function adminPayHtml(){
   const A=S.admin,F=[['pending','Pending'],['activated','Activated'],['rejected','Rejected'],['all','All']];
@@ -2163,6 +2211,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='ann-target'){const box=$('ann-people');if(box)box.hidden=e.target.value!=='selected'}
+  if(e.target&&e.target.id==='private-chat-image'&&e.target.files&&e.target.files[0]){const f=e.target.files[0];if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}privateChatClearImage();privateChatFile=f;privateChatPreview=URL.createObjectURL(f);$('private-chat-preview').innerHTML='<div class="card" style="padding:.5rem"><img src="'+privateChatPreview+'" alt="Selected image preview" style="max-width:100%;max-height:180px;border-radius:.5rem"><button class="btn mini" type="button" data-act="privateChatRemoveImage">Remove image</button></div>';return}
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
     const f=e.target.files[0];
     if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
