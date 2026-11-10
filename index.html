@@ -685,7 +685,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <button class='btn gold' data-act='resetSave'>Save new password</button>
 </div></div>
 
-<div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small id="private-chat-subtitle">Private conversation · Only you and the other participant</small></div><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small id="private-chat-note" class="private-chat-note">End-to-end encrypted. Your recovery passphrase is required to unlock chats on new devices.</small></div></div>
+<div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small id="private-chat-subtitle">Private conversation · Only you and the other participant</small></div><button class="btn mini" id="private-chat-verify" data-act="privateChatVerify">Verify safety code</button><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small id="private-chat-note" class="private-chat-note">End-to-end encrypted. Your recovery passphrase is required to unlock chats on new devices.</small></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -2010,7 +2010,7 @@ async function loadPrivateConversations({silent=false}={}){
  }catch(e){if(!silent)console.warn('Could not load private conversations:',e)}
 }
 let privateChatId=null,privateChatFile=null,privateChatPreview=null,privateChatChannel=null,privateChatBusy=false,privateChatOtherName='PipPulse Admin';
-let privateChatIdentity=null,privateChatCryptoKey=null,privateChatPeerFingerprint='',privateChatImageUrls=[];
+let privateChatIdentity=null,privateChatCryptoKey=null,privateChatPeerFingerprint='',privateChatImageUrls=[],privateChatPeerVerified=false,privateChatVerifyKey='';
 const PRIVATE_CHAT_KDF_ITERATIONS=310000;
 const privateChatEncoder=new TextEncoder();
 const privateChatDecoder=new TextDecoder();
@@ -2110,9 +2110,11 @@ async function privateChatConversationKey(conversationId,peerId){
  const safetyDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode([ownFingerprint,peerFingerprint].sort().join('|'))));
  privateChatPeerFingerprint=Array.from(safetyDigest).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join(' ');
  const pin='pippulse_e2ee_peer_'+S.user.id+'_'+peerId+'_'+conversationId;
- let previous=null;try{previous=localStorage.getItem(pin)}catch(_){}
+ privateChatVerifyKey='pippulse_e2ee_verified_'+S.user.id+'_'+peerId+'_'+conversationId;
+ let previous=null,verified=null;try{previous=localStorage.getItem(pin);verified=localStorage.getItem(privateChatVerifyKey)}catch(_){}
  if(previous&&previous!==privateChatPeerFingerprint)throw new Error('The other participant’s encryption key has changed. Do not send messages until you have verified this change with them.');
  if(!previous){try{localStorage.setItem(pin,privateChatPeerFingerprint)}catch(_){}}
+ privateChatPeerVerified=verified===privateChatPeerFingerprint;
  privateChatCryptoKey=key;
  return key;
 }
@@ -2139,8 +2141,10 @@ async function privateChatOpen(id){
   const p=otherProfile.data;
   privateChatOtherName=p?.display_name||p?.username||(S.access?.is_admin?'Customer':'PipPulse Admin');
   $('private-chat-title').textContent=privateChatOtherName;
-  $('private-chat-subtitle').textContent='End-to-end encrypted · Safety code: '+privateChatPeerFingerprint+' · Compare this code with the other participant';
-  $('private-chat-note').textContent='Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.';
+  $('private-chat-subtitle').textContent=(privateChatPeerVerified?'Verified E2EE':'Unverified E2EE')+' · Safety code: '+privateChatPeerFingerprint+' · Compare this code with the other participant';
+  $('private-chat-verify').textContent=privateChatPeerVerified?'Code verified':'Verify safety code';
+  $('private-chat-verify').disabled=privateChatPeerVerified;
+  $('private-chat-note').textContent=privateChatPeerVerified?'Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.':'Compare the safety code with the other participant using a separate trusted channel. Verify it before sending sensitive messages.';
   await privateChatLoad();
   privateChatChannel=sb.channel('private-chat-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'private_messages',filter:'conversation_id=eq.'+id},()=>privateChatLoad()).subscribe();
  }catch(e){
@@ -2185,6 +2189,19 @@ async function privateChatLoad(){
  }).join(''):'<div class="empty">This is the beginning of your end-to-end encrypted conversation. Messages and images are encrypted before upload.</div>';
  feed.scrollTop=feed.scrollHeight;
 }
+async function privateChatVerify(){
+ if(!privateChatCryptoKey||!privateChatVerifyKey||!privateChatPeerFingerprint)return;
+ const entered=window.prompt('Compare the safety code shown here with the code on the other participant’s device. Enter their code exactly to verify this conversation.');
+ if(entered===null)return;
+ const normalized=v=>String(v).toUpperCase().replace(/[^A-F0-9]/g,'');
+ if(normalized(entered)!==normalized(privateChatPeerFingerprint))return toast('The safety codes do not match. Do not send sensitive messages.');
+ try{localStorage.setItem(privateChatVerifyKey,privateChatPeerFingerprint)}catch(_){return toast('This browser could not save the verification. Please enable local storage and try again.')}
+ privateChatPeerVerified=true;
+ $('private-chat-subtitle').textContent='Verified E2EE · Safety code: '+privateChatPeerFingerprint;
+ $('private-chat-verify').textContent='Code verified';$('private-chat-verify').disabled=true;
+ $('private-chat-note').textContent='Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.';
+ toast('Safety code verified on this device.');
+}
 function privateChatClearImage(){
  if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);
  privateChatPreview=null;privateChatFile=null;
@@ -2193,6 +2210,7 @@ function privateChatClearImage(){
 }
 async function privateChatSend(){
  if(!privateChatId||!S.user||privateChatBusy)return;
+ if(!privateChatPeerVerified)return toast('Verify the safety code with the other participant before sending messages.');
  const body=$('private-chat-input').value.trim(),file=privateChatFile;
  if(!body&&!file)return toast('Write a message or choose an image.');
  if(body.length>2000)return toast('Private messages are limited to 2000 characters.');
@@ -2220,6 +2238,7 @@ async function privateChatSend(){
  finally{privateChatBusy=false;$('private-chat-send').disabled=false}
 }
 ACT.privateChatSend=()=>privateChatSend();
+ACT.privateChatVerify=()=>privateChatVerify();
 ACT.privateChatRemoveImage=()=>privateChatClearImage();
 ACT.privateOpen=id=>privateChatOpen(id);
 ACT.adminStartPrivate=async(_,btn)=>{
