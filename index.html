@@ -601,7 +601,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   
   <label for="a-pw">Password</label>
   <div class="password-wrap" id="a-pw-wrap">
-    <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="1Vensa@123">
+    <input id="a-pw" type="password" autocomplete="current-password" maxlength="72" placeholder="1Vesna@123.">
     <button class="password-toggle" id="a-pw-toggle" type="button" data-act="toggleSignupPassword" aria-controls="a-pw" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
   </div>
   <label for="a-pw-confirm" id="a-pw-confirm-label" hidden>Confirm Password</label>
@@ -1429,7 +1429,7 @@ function authUI0(){
   $('a-sub').textContent=su?'Sign up to unlock your first 3 signals free.':'Log in to access your signals.';
   $('a-fields').hidden=!su;$('a-go').textContent=su?'Create account':'Log in';
   $('a-pw').autocomplete=su?'new-password':'current-password';
-  $('a-pw').placeholder=su?'1Vensa@123':'Enter your password';
+  $('a-pw').placeholder=su?'1Vesna@123.':'Enter your password';
   $('a-pw-guidance').hidden=!su;
   $('a-pw-confirm-label').hidden=!su;
   $('a-pw-confirm-wrap').hidden=!su;
