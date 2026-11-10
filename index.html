@@ -2318,7 +2318,7 @@ async function privateChatSend(){
  finally{privateChatBusy=false;$('private-chat-send').disabled=false}
 }
 ACT.privateChatSend=()=>privateChatSend();
-ACT.privateChatSecuritySubmit=(_,e)=>privateChatSecuritySubmit(e);
+ACT.privateChatSecuritySubmit=()=>privateChatSecuritySubmit();
 ACT.privateChatSecurityCancel=()=>privateChatSecurityCancel();
 ACT.privateChatVerify=()=>privateChatVerify();
 ACT.privateChatRemoveImage=()=>privateChatClearImage();
