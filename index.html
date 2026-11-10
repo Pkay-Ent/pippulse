@@ -665,6 +665,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <p class='mut' style='margin:0'>Show customers how the trade ended. Saving closes the signal.</p>
   <label for='res-out'>Outcome</label>
   <select id='res-out'><option value=''>Choose</option><option value='win'>Win (take profit hit)</option><option value='loss'>Loss (stop loss hit)</option><option value='breakeven'>Break-even</option></select>
+  <p class='hint' id='res-pip-guide' aria-live='polite'></p>
   <label for='res-note'>Result note (optional)</label>
   <textarea id='res-note' maxlength='1000' placeholder='TP2 hit, +120 pips'></textarea>
   <label for='res-img'>After picture: result screenshot (optional, PNG, JPG or WebP, up to 2 MB)</label>
@@ -736,6 +737,8 @@ const chatTypingUsers=new Map();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f2=n=>Number(n).toFixed(2);
+const XAU_PIP_SIZE=0.10;
+const pipsFromPriceDistance=d=>{const n=Math.round((Math.abs(Number(d))/XAU_PIP_SIZE)*10)/10;return Number.isInteger(n)?String(n):n.toFixed(1)};
 const LOCK='<svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const UP='<svg class="i" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>';
 const DOWN='<svg class="i" viewBox="0 0 24 24"><path d="M7 7l10 10M17 9v8H9"/></svg>';
@@ -1309,7 +1312,7 @@ function rail(s){
   const seg=(a,b,c)=>`<rect class="${c} ${b<a?'up':'dn'}" x="74" y="${Math.min(a,b).toFixed(1)}" width="8" height="${Math.abs(a-b).toFixed(1)}"/>`;
   const lab=`Take profits ${tps.map(f2).join(', ')}. Entry ${lo===hi?f2(lo):f2(lo)+' to '+f2(hi)}. Stop loss ${f2(sl)}.`;
   return `<svg class="rail" viewBox="0 0 340 ${H}" role="img" aria-label="${esc(lab)}"><rect class="trk" x="74" y="${P-8}" width="8" height="${H-2*P+16}" rx="4"/>${seg(ym,far,'sg')}${seg(ym,ys,'sr')}<rect class="band" x="71" y="${(ym-bh/2).toFixed(1)}" width="14" height="${bh.toFixed(1)}" rx="3"/>`+
-    pts.map(p=>`<g class="lv ${p.k}" style="--i:${idx.get(p)}"><path class="ld" pathLength="1" d="M${p.k==='en'?85:82} ${p.y.toFixed(1)}L92 ${p.y.toFixed(1)}L98 ${p.ly.toFixed(1)}"/>${p.k==='en'?'':`<circle cx="78" cy="${p.y.toFixed(1)}" r="4"/>`}<text class="nm" x="0" y="${(p.ly+4).toFixed(1)}">${p.n}</text><text class="pr" x="104" y="${(p.ly+5.5).toFixed(1)}">${p.t}</text>${p.k==='en'?'':`<text class="d" x="340" y="${(p.ly+4).toFixed(1)}" text-anchor="end">${f2(Math.abs(p.v-mid))} pts</text>`}</g>`).join('')+'</svg>';
+    pts.map(p=>`<g class="lv ${p.k}" style="--i:${idx.get(p)}"><path class="ld" pathLength="1" d="M${p.k==='en'?85:82} ${p.y.toFixed(1)}L92 ${p.y.toFixed(1)}L98 ${p.ly.toFixed(1)}"/>${p.k==='en'?'':`<circle cx="78" cy="${p.y.toFixed(1)}" r="4"/>`}<text class="nm" x="0" y="${(p.ly+4).toFixed(1)}">${p.n}</text><text class="pr" x="104" y="${(p.ly+5.5).toFixed(1)}">${p.t}</text>${p.k==='en'?'':`<text class="d" x="340" y="${(p.ly+4).toFixed(1)}" text-anchor="end">${pipsFromPriceDistance(p.v-mid)} pips</text>`}</g>`).join('')+'</svg>';
 }
 function rr(s){const mid=(+s.entry_low+ +s.entry_high)/2,t=(s.take_profits||[])[0],risk=Math.abs(mid-+s.stop_loss);return(t==null||!risk)?null:Math.abs(+t-mid)/risk}
 /* Proof pictures: BEFORE is posted with the signal, AFTER is added when the trade ends */
@@ -1440,7 +1443,8 @@ async function unlock(id,btn){
 }
 function copySig(id){
   const s=S.signals.find(x=>x.id===id);if(!s||!s.direction)return;
-  const t=`PipPulse Gold: XAUUSD ${s.direction}\nEntry: ${f2(s.entry_low)}${+s.entry_low===+s.entry_high?'':' to '+f2(s.entry_high)}\nStop loss: ${f2(s.stop_loss)}\n${(s.take_profits||[]).map((v,i)=>'TP'+(i+1)+': '+f2(v)).join('\n')}\nConfidence: ${s.confidence}%${s.notes?'\n\n'+s.notes:''}`;
+  const mid=(+s.entry_low+ +s.entry_high)/2;
+  const t=`PipPulse Gold: XAUUSD ${s.direction}\nEntry: ${f2(s.entry_low)}${+s.entry_low===+s.entry_high?'':' to '+f2(s.entry_high)}\nStop loss: ${f2(s.stop_loss)} (${pipsFromPriceDistance(s.stop_loss-mid)} pips)\n${(s.take_profits||[]).map((v,i)=>'TP'+(i+1)+': '+f2(v)+' ('+pipsFromPriceDistance(v-mid)+' pips)').join('\n')}\nConfidence: ${s.confidence}%${s.notes?'\n\n'+s.notes:''}`;
   navigator.clipboard.writeText(t).then(()=>toast('Signal copied.'),()=>toast('Copy is not available on this device.'));
 }
 function setErr(m){const e=$('a-err');e.textContent=m||'';e.hidden=!m}
@@ -2480,7 +2484,10 @@ ACT.sigPublish=async(_,btn)=>{
 };
 ACT.resOpen=id=>{
   const s=S.signals.find(x=>x.id===id);if(!s)return;
-  S.resId=id;$('res-out').value=s.outcome||'';$('res-note').value=s.result_note||'';$('res-img').value='';$('res-err').hidden=true;openSheet('result');
+  S.resId=id;$('res-out').value=s.outcome||'';$('res-note').value=s.result_note||'';$('res-img').value='';$('res-err').hidden=true;
+  const mid=(+s.entry_low+ +s.entry_high)/2,distances=(s.take_profits||[]).map((v,i)=>'TP'+(i+1)+' '+pipsFromPriceDistance(v-mid)+' pips');
+  distances.push('SL '+pipsFromPriceDistance(s.stop_loss-mid)+' pips');
+  $('res-pip-guide').textContent='Distances from entry midpoint: '+distances.join(' · ')+'.';openSheet('result');
 };
 ACT.resSave=async(_,btn)=>{
   const err=$('res-err'),fail=m=>{err.textContent=m;err.hidden=!m};fail('');
