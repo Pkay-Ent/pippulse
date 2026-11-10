@@ -205,6 +205,12 @@ nav button.on .ico{filter:none}
 .chat-feed{display:flex;flex-direction:column;gap:.65rem;max-height:55vh;min-height:260px;overflow:auto;padding:.2rem .1rem .8rem;overscroll-behavior:contain}
 .chat-msg{max-width:88%;align-self:flex-start;background:var(--s1);border:1px solid var(--line);border-radius:.9rem .9rem .9rem .25rem;padding:.7rem .8rem;overflow-wrap:anywhere}
 .chat-msg.mine{align-self:flex-end;background:rgba(245,192,66,.09);border-color:rgba(245,192,66,.22);border-radius:.9rem .9rem .25rem .9rem}
+.chat-pinned{display:flex;align-items:flex-start;gap:.7rem;padding:.75rem .85rem;margin:.2rem 0 .7rem;border:1px solid rgba(245,192,66,.42);border-radius:.85rem;background:rgba(245,192,66,.08)}
+.chat-pinned-mark{font-size:1.1rem;line-height:1.3}
+.chat-pinned-body{min-width:0;flex:1}
+.chat-pinned-body b{display:block;color:var(--gold);font-size:.75rem;margin-bottom:.2rem}
+.chat-pinned-body p{margin:0;font-size:.86rem;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+.chat-pinned-jump{border:0;background:transparent;color:var(--gold);font:inherit;font-size:.76rem;font-weight:700;cursor:pointer;padding:.2rem}
 .chat-meta{display:flex;align-items:center;gap:.45rem;margin-bottom:.25rem;font-size:.72rem;color:var(--tx2)}
 .chat-meta b{color:var(--gold);font-size:.78rem}.chat-msg p{margin:0;white-space:pre-wrap;font-size:.9rem;line-height:1.45}
 .chat-actions{display:none}
@@ -704,7 +710,7 @@ const PLANS=[
 ];
 const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
-const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false,privateConversations:[]};
+const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],pinnedChatMessage:null,chatLoading:false,privateConversations:[]};
 let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false,chatChannelReady=false,chatIsTyping=false;
 let notificationSoundEnabled=true;
 try{notificationSoundEnabled=localStorage.getItem('pippulse_notification_sound')!=='off'}catch(e){}
@@ -1073,6 +1079,7 @@ function renderChat(){
     return;
   }
   const messages=S.chatMessages||[];
+  const pinned=S.pinnedChatMessage;
   const draft=$('chat-input')?.value||'';
   const editMsg=chatEditId?messages.find(m=>m.id===chatEditId):null;
   const replyMsg=chatReplyTo?messages.find(m=>m.id===chatReplyTo):null;
@@ -1080,6 +1087,7 @@ function renderChat(){
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
     <p class="chat-intro">Keep conversations respectful. Mention members with @username. Share trading screenshots responsibly.</p>
     <div class="chat-wrap">
+      ${pinned?`<div class="chat-pinned"><div class="chat-pinned-mark">📌</div><div class="chat-pinned-body"><b>PINNED BY PIPPULSE ADMIN · ${esc(pinned.author_name||"Community")}</b><p>${pinned.body?chatText(pinned.body):"📷 Photo message"}</p></div><button type="button" class="chat-pinned-jump" data-act="chatJump" data-id="${esc(pinned.id)}">View</button></div>`:""}
       <div class="chat-feed" id="chat-feed" aria-live="polite">${S.chatLoading?'<div class="empty">Loading conversation…</div>':messages.length?messages.map(m=>{
         const mine=m.user_id===S.user.id,canDelete=mine||!!(S.access&&S.access.is_admin),canEdit=mine;
         return `<article class="chat-msg ${mine?'mine':''}" id="chat-${esc(m.id)}" data-chat-id="${esc(m.id)}">
