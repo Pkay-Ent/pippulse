@@ -1993,7 +1993,7 @@ ACT.adminFilter=id=>{S.admin.filter=id;loadAdminTab()};
 
 
 function adminMessagesHtml(){const people=S.admin.people||[];const convs=S.admin.conversations||[];const options=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('');const threads=convs.length?convs.map(c=>{const p=people.find(x=>x.id===c.user_id)||{};return '<div class="notif-item" style="display:flex;align-items:center;justify-content:space-between;gap:.65rem"><button style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit" data-act="privateOpen" data-id="'+esc(c.id)+'"><b>'+esc(p.display_name||p.username||p.email||'Customer')+'</b><small>'+esc(p.email||'')+'</small></button><button class="btn mini out" data-act="adminDeletePrivate" data-id="'+esc(c.id)+'">Delete</button></div>'}).join(''):'<div class="empty">No private conversations yet.</div>';return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div><div class="card"><h3>Start a private conversation</h3><p class="hint">Only administrators can start conversations. The customer receives an invitation and can reply.</p><label for="private-person">Customer</label><select id="private-person"><option value="">Choose a customer</option>'+options+'</select><button class="btn gold" data-act="adminStartPrivate">Open private chat</button></div><div class="card"><h3>Your private conversations</h3>'+threads+'</div>';}
-async function adminMessagesLoad(){const [p,c]=await Promise.all([sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name'),sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('admin_id',S.user.id).order('last_message_at',{ascending:false})]);if(p.error)throw p.error;if(c.error)throw c.error;S.admin.people=p.data||[];S.admin.conversations=c.data||[];}
+async function adminMessagesLoad(){const [p,c]=await Promise.all([sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name'),sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('admin_id',S.user.id).order('last_message_at',{ascending:false})]);if(p.error)throw p.error;if(c.error)throw c.error;S.admin.people=p.data||[];S.admin.conversations=c.data||[];privateChatCleanStaleLocalPins(new Set(S.admin.conversations.map(x=>x.id)));}
 ACT.adminSendAnnouncement=async(_,btn)=>{const title=$('ann-title').value.trim(),body=$('ann-body').value.trim(),target=$('ann-target').value,ids=target==='selected'?Array.from($('ann-users').selectedOptions).map(o=>o.value):null;if(!title||!body)return toast('Enter an announcement title and message.');if(target==='selected'&&!ids.length)return toast('Select at least one customer.');btn.disabled=true;try{const{error}=await sb.rpc('admin_send_announcement',{p_title:title,p_body:body,p_recipient_ids:ids});if(error)throw error;$('ann-title').value='';$('ann-body').value='';toast('Announcement sent successfully.');}catch(e){toast('Could not send announcement: '+friendly(e));}finally{btn.disabled=false;}};
 
 
@@ -2002,12 +2002,27 @@ function privateChatSectionHtml(){
  const rows=S.privateConversations.map(c=>'<div class="notif-item" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem"><div style="min-width:0"><b>Private chat with PipPulse Admin</b><small>Only you and the admin can see this conversation</small></div><button class="btn mini gold" data-act="privateOpen" data-id="'+esc(c.id)+'">Open chat</button></div>').join('');
  return '<section class="card" style="margin:0 0 1rem"><div class="sec-h"><h3>Private chat</h3><span class="badge">Admin only</span></div><p class="hint">Your private conversation with the PipPulse admin. You can message the admin here at any time.</p>'+rows+'</section>';
 }
+function privateChatCleanStaleLocalPins(activeIds){
+ if(!S.user)return;
+ try{
+  const prefixes=['pippulse_e2ee_peer_'+S.user.id+'_','pippulse_e2ee_verified_'+S.user.id+'_'];
+  const remove=[];
+  for(let i=0;i<localStorage.length;i++){
+   const key=localStorage.key(i);
+   if(!key||!prefixes.some(prefix=>key.startsWith(prefix)))continue;
+   const conversationId=key.split('_').pop();
+   if(!activeIds.has(conversationId))remove.push(key);
+  }
+  remove.forEach(key=>localStorage.removeItem(key));
+ }catch(_){}
+}
 async function loadPrivateConversations({silent=false}={}){
  if(!S.user||S.access?.is_admin){S.privateConversations=[];const el=$('private-chat-section');if(el)el.innerHTML='';return}
  try{
   const{data,error}=await sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('user_id',S.user.id).order('last_message_at',{ascending:false});
   if(error)throw error;
   S.privateConversations=data||[];
+  privateChatCleanStaleLocalPins(new Set(S.privateConversations.map(c=>c.id)));
   const el=$('private-chat-section');if(el)el.innerHTML=privateChatSectionHtml();
  }catch(e){if(!silent)console.warn('Could not load private conversations:',e)}
 }
