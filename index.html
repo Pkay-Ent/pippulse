@@ -1951,7 +1951,7 @@ function adminPayHtml(){
     ${x.sender?`<div class='row'><span>Paid from</span><b style='overflow-wrap:anywhere'>${esc(x.sender)}</b></div>`:''}
     ${isTrc20?`<div class='row'><span>Verified on-chain</span><b>$${received.toFixed(2)} / $${required.toFixed(2)}</b></div>
     <div class='row'><span>Remaining shortfall</span><b>$${shortfall.toFixed(2)}</b></div>
-    ${waived>0?`<div class='row'><span>Shortfall waived</span><b>$${waived.toFixed(2)}</b></div>`:''}
+    ${waived>0?`<div class='row'><span>Remaining waiver</span><b>$${waived.toFixed(2)}</b></div>`:''}
     <div class='row'><span>Verified deposits</span><b>${count}</b></div>
     ${late>0?`<div class='row'><span>Late deposits (review)</span><b>$${late.toFixed(2)}</b></div>`:''}
     ${x.crypto_expires_at?`<div class='row'><span>Checkout expiry</span><b>${esc(new Date(x.crypto_expires_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))}</b></div>`:''}`:''}
