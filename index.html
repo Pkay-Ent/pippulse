@@ -490,6 +490,23 @@ html[data-start-view="signals"] .ind{transform:translateX(0)}
 html[data-start-view="plans"] .ind{transform:translateX(100%)}
 html[data-start-view="chat"] .ind{transform:translateX(200%)}
 html[data-start-view="account"] .ind{transform:translateX(300%)}
+
+/* Private chat: full-screen messenger, separate from Community Chat. */
+#s-private-chat{z-index:120;align-items:stretch;justify-content:stretch;padding:0;background:var(--bg)}
+#s-private-chat .private-chat-box{width:100%;max-width:none;height:100dvh;max-height:100dvh;border:0;border-radius:0;padding:calc(env(safe-area-inset-top) + .65rem) max(.8rem,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + .65rem) max(.8rem,env(safe-area-inset-left));display:flex;flex-direction:column;gap:.55rem;overflow:hidden;background:var(--bg)}
+#s-private-chat .private-chat-top{display:flex;align-items:center;gap:.7rem;padding:.25rem 0 .7rem;border-bottom:1px solid var(--line);flex:none}
+#s-private-chat .private-chat-avatar{width:2.65rem;height:2.65rem;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#ffe89a,#d99a19);color:#332000;font-weight:900;font-size:1.1rem;flex:none}
+#s-private-chat .private-chat-heading{flex:1;min-width:0}#s-private-chat .private-chat-heading h3{margin:0;font-size:1rem}#s-private-chat .private-chat-heading small{display:block;color:var(--mut);font-size:.72rem;margin-top:.15rem}
+#s-private-chat .private-chat-feed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:.75rem .1rem;display:flex;flex-direction:column;gap:.35rem}
+#s-private-chat .private-chat-feed .chat-msg{max-width:min(84%,34rem);margin:.2rem 0;padding:.65rem .8rem;border:1px solid var(--line);border-radius:1rem 1rem 1rem .25rem;background:var(--s1);overflow-wrap:anywhere}
+#s-private-chat .private-chat-feed .chat-msg.mine{align-self:flex-end;border-color:rgba(245,192,66,.4);border-radius:1rem 1rem .25rem 1rem;background:var(--s2)}
+#s-private-chat .private-chat-feed .chat-msg p{margin:.25rem 0 0;white-space:pre-wrap;line-height:1.45;font-size:.9rem}
+#s-private-chat .private-chat-feed .chat-meta{display:flex;gap:.6rem;align-items:center;justify-content:space-between;font-size:.72rem;color:var(--mut)}
+#s-private-chat .private-chat-feed .chat-meta b{color:var(--tx)}#s-private-chat .private-chat-feed .chat-meta time{font-size:.66rem}
+#s-private-chat .private-chat-compose{position:relative;bottom:auto;flex:none;margin-top:.15rem}
+#s-private-chat .private-chat-compose .chat-input-shell{min-height:2.65rem}#s-private-chat .private-chat-compose textarea{min-height:2.2rem;height:2.2rem;max-height:7rem}
+#s-private-chat .private-chat-note{color:var(--mut);font-size:.68rem;text-align:center;flex:none}
+#s-private-chat #private-chat-preview:empty{display:none}
 </style>
 </head>
 <body>
@@ -668,7 +685,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <button class='btn gold' data-act='resetSave'>Save new password</button>
 </div></div>
 
-<div class="sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box"><div class="grab"></div><div class="sec-h"><h3 id="private-chat-title">Private conversation</h3><button class="btn mini" data-act="closeSheet" data-id="private-chat">Close</button></div><p class="hint">Only the two participants can read this conversation.</p><div id="private-chat-feed" style="max-height:42dvh;overflow:auto;padding:.25rem 0"></div><div id="private-chat-preview"></div><label for="private-chat-input">Message</label><textarea id="private-chat-input" rows="3" maxlength="2000" placeholder="Write a private message…"></textarea><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp"><small class="pn">Optional PNG, JPG or WebP image, up to 10 MB.</small><button class="btn gold" id="private-chat-send" data-act="privateChatSend">Send privately</button></div></div>
+<div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small>Private conversation · Only you and the admin</small></div><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small class="private-chat-note">PNG, JPG or WebP images up to 10 MB. Your messages are visible only to you and the initiating admin.</small></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -2012,7 +2029,7 @@ async function privateChatLoad(){
  const rows=data||[];
  await Promise.all(rows.map(async m=>{if(m.image_path){const{data:u,error:ie}=await sb.storage.from('private-chat-images').createSignedUrl(m.image_path,3600);m.image_url=!ie&&u?u.signedUrl:null}}));
  const feed=$('private-chat-feed');if(!feed)return;
- feed.innerHTML=rows.length?rows.map(m=>'<div class="card" style="margin:.4rem 0;padding:.7rem;max-width:92%;'+(m.sender_id===S.user.id?'margin-left:auto;border-color:rgba(245,192,66,.35)':'')+'"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p>'+(m.image_url?'<img src="'+esc(m.image_url)+'" alt="Private attachment" style="display:block;max-width:100%;max-height:240px;border-radius:.6rem;margin-top:.5rem">':'')+'<small class="pn">'+(m.sender_id===S.user.id?'You':'PipPulse')+' · '+esc(new Date(m.created_at).toLocaleString())+'</small></div>').join(''):'<div class="empty">This is the start of your private conversation.</div>';
+ feed.innerHTML=rows.length?rows.map(m=>'<article class="chat-msg '+(m.sender_id===S.user.id?'mine':'')+'"><div class="chat-meta"><b>'+(m.sender_id===S.user.id?'You':'PipPulse Admin')+'</b><time>'+esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))+'</time></div>'+(m.body?'<p>'+esc(m.body)+'</p>':'')+(m.image_url?'<a href="'+esc(m.image_url)+'" target="_blank" rel="noopener noreferrer"><img class="chat-image" src="'+esc(m.image_url)+'" alt="Private chat image" loading="lazy"></a>':'')+'</article>').join(''):'<div class="empty">This is the beginning of your private conversation. Send a message to the admin whenever you need help.</div>';
  feed.scrollTop=feed.scrollHeight;
 }
 function privateChatClearImage(){if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);privateChatPreview=null;privateChatFile=null;if($('private-chat-image'))$('private-chat-image').value='';if($('private-chat-preview'))$('private-chat-preview').innerHTML=''}
@@ -2226,7 +2243,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='ann-target'){const box=$('ann-people');if(box)box.hidden=e.target.value!=='selected'}
-  if(e.target&&e.target.id==='private-chat-image'&&e.target.files&&e.target.files[0]){const f=e.target.files[0];if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}privateChatClearImage();privateChatFile=f;privateChatPreview=URL.createObjectURL(f);$('private-chat-preview').innerHTML='<div class="card" style="padding:.5rem"><img src="'+privateChatPreview+'" alt="Selected image preview" style="max-width:100%;max-height:180px;border-radius:.5rem"><button class="btn mini" type="button" data-act="privateChatRemoveImage">Remove image</button></div>';return}
+  if(e.target&&e.target.id==='private-chat-image'&&e.target.files&&e.target.files[0]){const f=e.target.files[0];if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}privateChatClearImage();privateChatFile=f;privateChatPreview=URL.createObjectURL(f);$('private-chat-preview').innerHTML='<div class="chat-image-preview"><img src="'+privateChatPreview+'" alt="Selected image preview"><div class="chat-image-preview-info"><b>Image ready to send</b><small>'+esc(f.name)+'</small><div class="chat-image-preview-actions"><button type="button" class="btn small" data-act="privateChatRemoveImage">Remove image</button><label class="btn small" for="private-chat-image">Change image</label></div></div></div>';return}
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
     const f=e.target.files[0];
     if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
