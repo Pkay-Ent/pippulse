@@ -305,7 +305,8 @@ nav button.on .ico{animation:pop .4s var(--ease)}
 .sheet{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;background:rgba(3,5,9,.75);backdrop-filter:blur(4px)}
 .sheet.show{display:flex;animation:fade .2s both}
 .box{width:100%;max-width:var(--w);max-height:90dvh;overflow:auto;background:var(--s1);border:1px solid var(--line2);border-bottom:0;border-radius:1.5rem 1.5rem 0 0;padding:1rem max(1.2rem,env(safe-area-inset-right)) calc(1.5rem + env(safe-area-inset-bottom)) max(1.2rem,env(safe-area-inset-left));animation:up .35s var(--ease);box-shadow:0 -10px 40px rgba(0,0,0,0.5)}
-.grab{width:2.5rem;height:.28rem;border-radius:99px;background:var(--line2);margin:0 auto 1rem}
+.grab{width:2.5rem;height:.28rem;border-radius:99px;background:var(--line2);margin:0 auto 1rem;position:relative;touch-action:pan-y;cursor:grab}
+.grab:before{content:"";position:absolute;left:-1.5rem;right:-1.5rem;top:-.85rem;bottom:-.85rem}
 .box h3{margin:.5rem 0 .3rem;font:700 1.45rem var(--fd);letter-spacing:-.01em}
 .sicon{width:3rem;height:3rem;border-radius:1rem;display:grid;place-items:center;margin-bottom:.8rem;color:var(--ink);background:var(--gbtn);animation:pop .5s var(--ease)}
 label{display:block;margin:.85rem 0 .35rem;font-size:.82rem;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.03em}
@@ -2132,6 +2133,7 @@ document.addEventListener('change',e=>{
 let pullStartY=null,pullTarget=null,pullReloading=false;
 document.addEventListener('touchstart',e=>{
   if(e.touches.length!==1||pullReloading)return;
+  if(e.target.closest('.grab')){pullStartY=null;pullTarget=null;return}
   const sheet=document.querySelector('.sheet.show');
   if(sheet){
     const box=sheet.querySelector('.box');
@@ -2156,6 +2158,25 @@ document.addEventListener('touchmove',e=>{
 },{passive:true});
 document.addEventListener('touchend',()=>{pullStartY=null;pullTarget=null},{passive:true});
 document.addEventListener('touchcancel',()=>{pullStartY=null;pullTarget=null},{passive:true});
+
+/* Dragging a sheet's grab handle downward closes that sheet without reloading. */
+document.querySelectorAll('.sheet .grab').forEach(handle=>{
+  let startY=null;
+  handle.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
+    startY=e.touches[0].clientY;
+  },{passive:true});
+  handle.addEventListener('touchend',e=>{
+    if(startY===null)return;
+    const delta=e.changedTouches[0].clientY-startY;
+    startY=null;
+    if(delta>70){
+      const sheet=handle.closest('.sheet');
+      if(sheet&&sheet.classList.contains('show'))closeSheet(sheet.id.replace(/^s-/,''));
+    }
+  },{passive:true});
+  handle.addEventListener('touchcancel',()=>{startY=null},{passive:true});
+});
 
 let chatTouchStart=null;
 document.addEventListener('touchstart',e=>{
