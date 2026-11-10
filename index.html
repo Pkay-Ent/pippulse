@@ -684,7 +684,7 @@ const PLANS=[
 ];
 const NOKEY=SB_KEY.startsWith('PASTE');
 const sb=supabase.createClient(SB_URL,SB_KEY);
-const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false};
+const S={user:null,profile:null,access:null,signals:[],loading:true,error:null,mode:'signup',plan:'five_month',seen:new Set(),flash:null,notifications:[],notificationReads:new Set(),notificationOpen:false,chatMessages:[],chatLoading:false,privateConversations:[]};
 let notificationChannel=null,notificationUserId=null,chatChannel=null,chatUserId=null,chatBusy=false,chatChannelReady=false,chatIsTyping=false;
 let notificationSoundEnabled=true;
 try{notificationSoundEnabled=localStorage.getItem('pippulse_notification_sound')!=='off'}catch(e){}
@@ -762,7 +762,7 @@ function show(v){
   document.documentElement.setAttribute('data-start-view',v);
   try{localStorage.setItem('pippulse_last_view',v)}catch(e){}
   $('v-admin').hidden=true;
-  if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat()}
+  if(v==='chat'&&S.user){if(!S.chatMessages.length&&!S.chatLoading)loadChat();watchChat();loadPrivateConversations()}
   VIEWS.forEach((x,i)=>{const on=x===v;$('v-'+x).hidden=!on;$('n-'+x).classList.toggle('on',on);if(on){$('ind').style.setProperty('--ix',i);if(x!=='signals'){const el=$('v-'+x);el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}}});
   scrollTo({top:0});
   /* Opening chat should always land on the newest messages, not the archive. */
@@ -961,7 +961,7 @@ function watchNotifications(){
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'subscription_notifications',filter:'user_id=eq.'+S.user.id},()=>{
       playNotificationSound();loadNotifications();toast('A subscription reminder is available.');
     }).on('postgres_changes',{event:'INSERT',schema:'public',table:'user_notifications',filter:'recipient_id=eq.'+S.user.id},()=>{
-      playNotificationSound();loadNotifications();toast('You have a new PipPulse message.');
+      playNotificationSound();loadNotifications();loadPrivateConversations({silent:true});toast('You have a new PipPulse message.');
     }).subscribe();
 }
 function stopWatchingNotifications(){
@@ -1055,6 +1055,7 @@ function renderChat(){
   const replyMsg=chatReplyTo?messages.find(m=>m.id===chatReplyTo):null;
   const composerText=editMsg?editMsg.body:draft;
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
+    <div id="private-chat-section">${privateChatSectionHtml()}</div>
     <p class="chat-intro">Keep conversations respectful. Mention members with @username. Share trading screenshots responsibly.</p>
     <div class="chat-wrap">
       <div class="chat-feed" id="chat-feed" aria-live="polite">${S.chatLoading?'<div class="empty">Loading conversation…</div>':messages.length?messages.map(m=>{
@@ -1975,6 +1976,20 @@ async function adminMessagesLoad(){const [p,c]=await Promise.all([sb.from('profi
 ACT.adminSendAnnouncement=async(_,btn)=>{const title=$('ann-title').value.trim(),body=$('ann-body').value.trim(),target=$('ann-target').value,ids=target==='selected'?Array.from($('ann-users').selectedOptions).map(o=>o.value):null;if(!title||!body)return toast('Enter an announcement title and message.');if(target==='selected'&&!ids.length)return toast('Select at least one customer.');btn.disabled=true;try{const{error}=await sb.rpc('admin_send_announcement',{p_title:title,p_body:body,p_recipient_ids:ids});if(error)throw error;$('ann-title').value='';$('ann-body').value='';toast('Announcement sent successfully.');}catch(e){toast('Could not send announcement: '+friendly(e));}finally{btn.disabled=false;}};
 
 
+function privateChatSectionHtml(){
+ if(!S.user||S.access?.is_admin||!(S.privateConversations||[]).length)return '';
+ const rows=S.privateConversations.map(c=>'<div class="notif-item" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem"><div style="min-width:0"><b>Private chat with PipPulse Admin</b><small>Only you and the admin can see this conversation</small></div><button class="btn mini gold" data-act="privateOpen" data-id="'+esc(c.id)+'">Open chat</button></div>').join('');
+ return '<section class="card" style="margin:0 0 1rem"><div class="sec-h"><h3>Private chat</h3><span class="badge">Admin only</span></div><p class="hint">Your private conversation with the PipPulse admin. You can message the admin here at any time.</p>'+rows+'</section>';
+}
+async function loadPrivateConversations({silent=false}={}){
+ if(!S.user||S.access?.is_admin){S.privateConversations=[];const el=$('private-chat-section');if(el)el.innerHTML='';return}
+ try{
+  const{data,error}=await sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('user_id',S.user.id).order('last_message_at',{ascending:false});
+  if(error)throw error;
+  S.privateConversations=data||[];
+  const el=$('private-chat-section');if(el)el.innerHTML=privateChatSectionHtml();
+ }catch(e){if(!silent)console.warn('Could not load private conversations:',e)}
+}
 let privateChatId=null,privateChatFile=null,privateChatPreview=null,privateChatChannel=null,privateChatBusy=false;
 async function privateChatOpen(id){
  if(!S.user||!id)return;
