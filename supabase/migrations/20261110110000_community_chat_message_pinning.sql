@@ -59,3 +59,18 @@ revoke all on function public.admin_pin_community_chat_message(uuid) from public
 revoke all on function public.admin_unpin_community_chat_message() from public, anon;
 grant execute on function public.admin_pin_community_chat_message(uuid) to authenticated;
 grant execute on function public.admin_unpin_community_chat_message() to authenticated;
+
+-- Enable live pin-change notifications where Supabase Realtime is available.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'community_chat_pin'
+     ) then
+    alter publication supabase_realtime add table public.community_chat_pin;
+  end if;
+end;
+$$;
