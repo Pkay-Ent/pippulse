@@ -2146,7 +2146,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
     const f=e.target.files[0];
-    if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>5242880){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
+    if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
     if(chatPreviewUrl)URL.revokeObjectURL(chatPreviewUrl);
     chatSelectedFile=f;chatPreviewUrl=URL.createObjectURL(f);
     renderChat();
