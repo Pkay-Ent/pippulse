@@ -259,7 +259,7 @@ revoke all on function public.dispatch_user_notification_push() from public, ano
 -- Encrypted image bytes are stored as opaque application/octet-stream objects.
 update storage.buckets
 set public = false,
-    file_size_limit = 10485760,
+    file_size_limit = 10485776,
     allowed_mime_types = array['application/octet-stream']
 where id = 'private-chat-images';
 
