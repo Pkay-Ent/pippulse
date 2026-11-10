@@ -2175,7 +2175,6 @@ async function privateChatDecrypt(value,iv,key){
 async function privateChatOpen(id){
  if(!S.user||!id||privateChatOpening)return;
  privateChatOpening=true;
- try{
  if(privateChatChannel){sb.removeChannel(privateChatChannel);privateChatChannel=null}
  privateChatId=id;privateChatCryptoKey=null;
  $('private-chat-feed').innerHTML='<div class="empty">Preparing end-to-end encryption…</div>';openSheet('private-chat');
