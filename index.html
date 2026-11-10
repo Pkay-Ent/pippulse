@@ -927,21 +927,24 @@ function renderNotifications(){
 async function loadNotifications(){
   if(!notificationEligible()){S.notifications=[];S.notificationReads=new Set();renderNotifications();return}
   try{
-    const [signals,reminders]=await Promise.all([
+    const [signals,reminders,customer]=await Promise.all([
       sb.from('signal_notifications').select('id,signal_id,title,body,created_at').order('created_at',{ascending:false}).limit(25),
-      sb.from('subscription_notifications').select('id,title,body,created_at,read_at,type,notice_day').order('created_at',{ascending:false}).limit(25)
+      sb.from('subscription_notifications').select('id,title,body,created_at,read_at,type,notice_day').order('created_at',{ascending:false}).limit(25),
+      sb.from('user_notifications').select('id,notification_type,title,body,details,created_at,read_at').eq('recipient_id',S.user.id).order('created_at',{ascending:false}).limit(30)
     ]);
     if(signals.error)throw signals.error;
-    if(reminders.error)throw reminders.error;
+    if(reminders.error)throw reminders.error;if(customer.error)throw customer.error;
     const signalRows=(signals.data||[]).map(n=>({...n,kind:'signal'}));
     const reminderRows=(reminders.data||[]).map(n=>({...n,kind:'subscription'}));
-    S.notifications=[...signalRows,...reminderRows].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,40);
+    const customerRows=(customer.data||[]).map(n=>({...n,kind:'customer'}));
+    S.notifications=[...signalRows,...reminderRows,...customerRows].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,40);
     const signalIds=signalRows.map(n=>n.id);
     const signalReads=signalIds.length?await sb.from('signal_notification_reads').select('notification_id').eq('user_id',S.user.id).in('notification_id',signalIds):{data:[],error:null};
     if(signalReads.error)throw signalReads.error;
     S.notificationReads=new Set([
       ...(signalReads.data||[]).map(x=>'signal:'+x.notification_id),
-      ...reminderRows.filter(x=>x.read_at).map(x=>'subscription:'+x.id)
+      ...reminderRows.filter(x=>x.read_at).map(x=>'subscription:'+x.id),
+      ...customerRows.filter(x=>x.read_at).map(x=>'customer:'+x.id)
     ]);
   }catch(e){console.warn('Could not load notifications:',e)}
   renderNotifications();
@@ -956,6 +959,8 @@ function watchNotifications(){
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'subscription_notifications',filter:'user_id=eq.'+S.user.id},()=>{
       playNotificationSound();loadNotifications();toast('A subscription reminder is available.');
+    }).on('postgres_changes',{event:'INSERT',schema:'public',table:'user_notifications',filter:'recipient_id=eq.'+S.user.id},()=>{
+      playNotificationSound();loadNotifications();toast('You have a new PipPulse message.');
     }).subscribe();
 }
 function stopWatchingNotifications(){
@@ -970,6 +975,13 @@ function toggleNotifications(){
 async function openNotification(id,kind){
   if(!S.user)return;
   try{
+    if(kind==='customer'){
+      const{error}=await sb.from('user_notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('recipient_id',S.user.id);if(error)throw error;
+      S.notificationReads.add('customer:'+id);S.notificationOpen=false;renderNotifications();
+      const row=S.notifications.find(n=>n.kind==='customer'&&n.id===id);
+      if(row&&row.details&&row.details.conversation_id)toast('Private chat will open when the messaging screen is ready.');
+      return;
+    }
     if(kind==='subscription'){
       const{error}=await sb.from('subscription_notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('user_id',S.user.id);
       if(error)throw error;
