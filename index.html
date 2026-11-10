@@ -1134,6 +1134,14 @@ async function loadChat({silent=false,keepPosition=false}={}){
     if(error)throw error;
     /* Fetch the newest messages first, then reverse for chronological display. */
     S.chatMessages=(data||[]).reverse();
+    const pinResult=await sb.from('community_chat_pin').select('message_id,pinned_at').eq('slot','community').maybeSingle();
+    if(pinResult.error)throw pinResult.error;
+    S.pinnedChatMessage=null;
+    if(pinResult.data){
+      let pinned=S.chatMessages.find(m=>m.id===pinResult.data.message_id);
+      if(!pinned){const{data:pinMessage,error:pinError}=await sb.from('community_chat_messages').select('id,user_id,author_name,body,created_at,updated_at,reply_to_id,image_path').eq('id',pinResult.data.message_id).maybeSingle();if(pinError)throw pinError;pinned=pinMessage;if(pinned){S.chatMessages.push(pinned);S.chatMessages.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));}}
+      if(pinned)S.pinnedChatMessage={...pinned,pinned_at:pinResult.data.pinned_at};
+    }
     await Promise.all(S.chatMessages.map(async m=>{
       if(m.image_path){
         const{data:u,error:ie}=await sb.storage.from('community-chat-images').createSignedUrl(m.image_path,3600);
@@ -1169,6 +1177,10 @@ function watchChat(){
   chatChannel=sb.channel('community-chat-live',{config:{broadcast:{self:false}}})
     .on('broadcast',{event:'typing'},({payload})=>handleChatTyping(payload))
     .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_messages'},()=>{
+      if(chatRefreshTimer)clearTimeout(chatRefreshTimer);
+      chatRefreshTimer=setTimeout(()=>loadChat({silent:true,keepPosition:true}),120);
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'community_chat_pin'},()=>{
       if(chatRefreshTimer)clearTimeout(chatRefreshTimer);
       chatRefreshTimer=setTimeout(()=>loadChat({silent:true,keepPosition:true}),120);
     }).subscribe(status=>{
@@ -1220,9 +1232,11 @@ function openChatMenu(id,x,y){
   const msg=S.chatMessages.find(m=>m.id===id);if(!msg)return;
   const menu=$('chat-context');if(!menu)return;
   const mine=msg.user_id===S.user?.id,admin=!!(S.access&&S.access.is_admin);
-  menu.innerHTML=`<button type="button" data-act="chatReply" data-id="${esc(id)}">↩ Reply</button>${mine?`<button type="button" data-act="chatEdit" data-id="${esc(id)}">Edit message</button>`:''}${mine||admin?`<button type="button" data-act="chatDelete" data-id="${esc(id)}">Delete message</button>`:''}`;
+  menu.innerHTML=`${admin?(S.pinnedChatMessage&&S.pinnedChatMessage.id===id?`<button type="button" data-act="chatUnpin" data-id="${esc(id)}">📌 Unpin message</button>`:`<button type="button" data-act="chatPin" data-id="${esc(id)}">📌 Pin message</button>`):""}<button type="button" data-act="chatReply" data-id="${esc(id)}">↩ Reply</button>${mine?`<button type="button" data-act="chatEdit" data-id="${esc(id)}">Edit message</button>`:''}${mine||admin?`<button type="button" data-act="chatDelete" data-id="${esc(id)}">Delete message</button>`:''}`;
   menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-170))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';
 }
+async function pinChatMessage(id){closeChatMenu();if(!S.access?.is_admin)return toast('Admin access required.');try{const{error}=await sb.rpc('admin_pin_community_chat_message',{p_message_id:id});if(error)throw error;await loadChat({silent:true,keepPosition:true});toast('Message pinned for everyone.')}catch(e){toast('Could not pin message: '+friendly(e))}}
+async function unpinChatMessage(){closeChatMenu();if(!S.access?.is_admin)return toast('Admin access required.');try{const{error}=await sb.rpc('admin_unpin_community_chat_message');if(error)throw error;await loadChat({silent:true,keepPosition:true});toast('Message unpinned.')}catch(e){toast('Could not unpin message: '+friendly(e))}}
 function replyChatMessage(id){closeChatMenu();
   const msg=S.chatMessages.find(m=>m.id===id);if(!msg)return;
   chatReplyTo=id;chatEditId=null;renderChat();$('chat-input')?.focus();
@@ -1575,6 +1589,8 @@ ACT.closeSheet=id=>closeSheet(id);
 ACT.chatSend=()=>sendChat();
 ACT.chatRemoveImage=()=>{if(chatPreviewUrl)URL.revokeObjectURL(chatPreviewUrl);chatPreviewUrl=null;chatSelectedFile=null;const f=$('chat-image');if(f)f.value='';renderChat()};
 ACT.chatDelete=id=>deleteChatMessage(id);
+ACT.chatPin=id=>pinChatMessage(id);
+ACT.chatUnpin=()=>unpinChatMessage();
 ACT.chatReply=id=>replyChatMessage(id);
 ACT.chatEdit=id=>editChatMessage(id);
 ACT.chatJump=id=>jumpChatMessage(id);
