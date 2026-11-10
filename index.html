@@ -1936,23 +1936,45 @@ function adminPayHtml(){
   if(!A.list.length)return chips+`<div class='empty'>No ${A.filter==='all'?'':esc(A.filter)+' '}payments.</div>`;
   return chips+A.list.map(x=>{
     const pl=(PLANS.find(p=>p.id===x.plan)||{label:x.plan}).label,cur=x.currency==='GHS'?'GH₵':'$',who=esc(x.display_name||x.email||'User')+(x.username?' @'+esc(x.username):'');
+    const isTrc20=x.payment_method==='usdt'&&x.network==='trc20';
+    const received=Number(x.actual_received_amount||0),required=Number(x.amount||0);
+    const shortfall=Math.max(0,Number(x.remaining_shortfall??(required-received-Number(x.shortfall_waived_amount||0))));
+    const waived=Number(x.shortfall_waived_amount||0),late=Number(x.late_deposit_amount||0),count=Number(x.deposit_count||0);
+    const canReview=x.status==='pending'||(isTrc20&&x.status==='rejected'&&count>0);
+    const underpaid=isTrc20&&received+0.000001<required;
+    const actionLabel=underpaid?'Approve & waive shortfall':'Approve';
     return `<div class='card'><div class='uh'><span>${who}</span><b>${cur}${esc(x.amount)}</b></div>
     <p class='hint'>${esc([x.email,x.phone,x.country].filter(Boolean).join(' · '))}</p>
     <div class='row'><span>Plan</span><b>${esc(pl)}</b></div>
     <div class='row'><span>Method</span><b>${esc(({momo:'Mobile Money',usdt:'USDT',paystack:'Paystack'})[x.payment_method]||x.payment_method)}${x.network&&NETLAB[x.network]?' · '+esc(NETLAB[x.network]):''}${x.channel?' · '+esc(x.channel):''}</b></div>
     <div class='row'><span>Reference</span><b style='overflow-wrap:anywhere'>${esc(x.reference)}</b></div>
     ${x.sender?`<div class='row'><span>Paid from</span><b style='overflow-wrap:anywhere'>${esc(x.sender)}</b></div>`:''}
+    ${isTrc20?`<div class='row'><span>Verified on-chain</span><b>$${received.toFixed(2)} / $${required.toFixed(2)}</b></div>
+    <div class='row'><span>Remaining shortfall</span><b>$${shortfall.toFixed(2)}</b></div>
+    ${waived>0?`<div class='row'><span>Shortfall waived</span><b>$${waived.toFixed(2)}</b></div>`:''}
+    <div class='row'><span>Verified deposits</span><b>${count}</b></div>
+    ${late>0?`<div class='row'><span>Late deposits (review)</span><b>$${late.toFixed(2)}</b></div>`:''}
+    ${x.crypto_expires_at?`<div class='row'><span>Checkout expiry</span><b>${esc(new Date(x.crypto_expires_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))}</b></div>`:''}`:''}
     <div class='row'><span>Submitted</span><b>${esc(new Date(x.created_at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}))}</b></div>
-    ${x.status==='pending'?`<label for='pn-${esc(x.id)}'>Note (shown to the user if rejected)</label><input id='pn-${esc(x.id)}' maxlength='1000'><div class='two'><button class='btn' data-act='payReject' data-id='${esc(x.id)}'>Reject</button><button class='btn gold' data-act='payApprove' data-id='${esc(x.id)}'>Approve</button></div>`:`<div class='row'><span>Status</span><b>${esc(x.status)}</b></div>${x.admin_note?`<p class='hint'>${esc(x.admin_note)}</p>`:''}`}</div>`}).join('');
+    ${canReview?`<label for='pn-${esc(x.id)}'>Admin note (required for rejection; optional for approval)</label><input id='pn-${esc(x.id)}' maxlength='1000'><div class='two'><button class='btn' data-act='payReject' data-id='${esc(x.id)}'>Reject</button><button class='btn gold' data-act='payApprove' data-id='${esc(x.id)}'>${actionLabel}</button></div>`:`<div class='row'><span>Status</span><b>${esc(x.status)}</b></div>${x.admin_note?`<p class='hint'>${esc(x.admin_note)}</p>`:''}`}</div>`}).join('');
 }
 async function reviewPay(id,ok,btn){
+  const row=S.admin.list.find(x=>x.id===id);
   const note=(($('pn-'+id)||{}).value||'').trim();
   if(!ok&&!note)return toast('Add a short reason before rejecting.');
-  if(!confirm(ok?'Approve this payment and activate the plan?':'Reject this payment?'))return;
+  if(ok&&row&&row.payment_method==='usdt'&&row.network==='trc20'){
+    const received=Number(row.actual_received_amount||0),required=Number(row.amount||0),shortfall=Math.max(0,required-received);
+    if(received<=0)return toast('This checkout has no verified USDT deposits to approve.');
+    const prompt=shortfall>0
+      ?`Approve this plan with a shortfall waiver?\n\nRequired: $${required.toFixed(2)}\nVerified received: $${received.toFixed(2)}\nShortfall to waive: $${shortfall.toFixed(2)}\n\nThe blockchain receipt will remain recorded as $${received.toFixed(2)}.\n\nContinue?`
+      :`Approve this TRC20 payment and activate the plan?\n\nVerified received: $${received.toFixed(2)}\nRequired: $${required.toFixed(2)}\n\nContinue?`;
+    if(!confirm(prompt))return;
+  }else if(!confirm(ok?'Approve this payment and activate the plan?':'Reject this payment?'))return;
   btn.disabled=true;
   try{
     const{data,error}=await sb.rpc('review_payment',{p_payment_id:id,p_approve:ok,p_note:note||null});
     if(error)throw error;
+    if(data&&data.success===false)throw new Error(data.message||data.reason||'The payment review was not completed.');
     toast((data&&data.message)||(ok?'Payment approved.':'Payment rejected.'));
     await loadAdminTab();
   }catch(e){toast(friendly(e))}finally{btn.disabled=false}
