@@ -1536,7 +1536,7 @@ ACT.toggleConfirmPassword=()=>{
 };
 let fgUntil=0,resendAt=0;
 S.payments=[];S.pay={};S.pendingEmail=null;S.payPlan=null;
-S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},msg:''};
+S.admin={tab:'payments',filter:'pending',list:[],audit:[],settings:{},people:[],conversations:[],msg:''};
 ACT.closeSheet=id=>closeSheet(id);
 ACT.chatSend=()=>sendChat();
 ACT.chatRemoveImage=()=>{if(chatPreviewUrl)URL.revokeObjectURL(chatPreviewUrl);chatPreviewUrl=null;chatSelectedFile=null;const f=$('chat-image');if(f)f.value='';renderChat()};
@@ -2017,7 +2017,7 @@ ACT.privateChatRemoveImage=()=>privateChatClearImage();
 ACT.privateOpen=id=>privateChatOpen(id);
 ACT.adminStartPrivate=async(_,btn)=>{
  const uid=$('private-person').value;if(!uid)return toast('Choose a customer first.');
- btn.disabled=true;try{const{data,error}=await sb.rpc('admin_start_private_conversation',{p_user_id:uid});if(error)throw error;if(!data)throw new Error('Could not create conversation.');await privateChatOpen(data)}
+ btn.disabled=true;try{const{data,error}=await sb.rpc('admin_start_private_conversation',{p_user_id:uid});if(error)throw error;if(!data)throw new Error('Could not create conversation.');await adminMessagesLoad();renderAdmin();await privateChatOpen(data)}
  catch(e){toast('Could not open private chat: '+friendly(e))}finally{btn.disabled=false}
 };
 
