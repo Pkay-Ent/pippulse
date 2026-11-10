@@ -2105,7 +2105,10 @@ async function privateChatConversationKey(conversationId,peerId){
   {name:'HKDF',hash:'SHA-256',salt:privateChatEncoder.encode('PipPulse private chat v1:'+conversationId),info:privateChatEncoder.encode('PipPulse E2EE message key')},
   material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']
  );
- privateChatPeerFingerprint=await privateChatFingerprint(jwk);
+ const ownFingerprint=await privateChatFingerprint(identity.publicJwk);
+ const peerFingerprint=await privateChatFingerprint(jwk);
+ const safetyDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode([ownFingerprint,peerFingerprint].sort().join('|')));
+ privateChatPeerFingerprint=Array.from(safetyDigest).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join(' ');
  const pin='pippulse_e2ee_peer_'+S.user.id+'_'+peerId+'_'+conversationId;
  let previous=null;try{previous=localStorage.getItem(pin)}catch(_){}
  if(previous&&previous!==privateChatPeerFingerprint)throw new Error('The other participant’s encryption key has changed. Do not send messages until you have verified this change with them.');
@@ -2168,6 +2171,10 @@ async function privateChatLoad(){
   }else{
    m.decrypted_body=m.body||'';
    m.legacy=true;
+   if(m.image_path){
+    try{const{data:u,error:ie}=await sb.storage.from('private-chat-images').createSignedUrl(m.image_path,3600);if(ie)throw ie;m.image_url=u?.signedUrl||null}
+    catch(_){m.image_error=true}
+   }
   }
  }));
  const feed=$('private-chat-feed');if(!feed)return;
