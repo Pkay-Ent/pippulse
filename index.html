@@ -1992,7 +1992,7 @@ ACT.adminTab=id=>{S.admin.tab=id;S.admin.msg='';renderAdmin();loadAdminTab()};
 ACT.adminFilter=id=>{S.admin.filter=id;loadAdminTab()};
 
 
-function adminMessagesHtml(){const people=S.admin.people||[];const convs=S.admin.conversations||[];const options=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('');const threads=convs.length?convs.map(c=>{const p=people.find(x=>x.id===c.user_id)||{};return '<button class="notif-item" style="width:100%;text-align:left" data-act="privateOpen" data-id="'+esc(c.id)+'"><b>'+esc(p.display_name||p.username||p.email||'Customer')+'</b><small>'+esc(p.email||'')+'</small></button>'}).join(''):'<div class="empty">No private conversations yet.</div>';return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div><div class="card"><h3>Start a private conversation</h3><p class="hint">Only administrators can start conversations. The customer receives an invitation and can reply.</p><label for="private-person">Customer</label><select id="private-person"><option value="">Choose a customer</option>'+options+'</select><button class="btn gold" data-act="adminStartPrivate">Open private chat</button></div><div class="card"><h3>Your private conversations</h3>'+threads+'</div>';}
+function adminMessagesHtml(){const people=S.admin.people||[];const convs=S.admin.conversations||[];const options=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('');const threads=convs.length?convs.map(c=>{const p=people.find(x=>x.id===c.user_id)||{};return '<div class="notif-item" style="display:flex;align-items:center;justify-content:space-between;gap:.65rem"><button style="flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit" data-act="privateOpen" data-id="'+esc(c.id)+'"><b>'+esc(p.display_name||p.username||p.email||'Customer')+'</b><small>'+esc(p.email||'')+'</small></button><button class="btn mini out" data-act="adminDeletePrivate" data-id="'+esc(c.id)+'">Delete</button></div>'}).join(''):'<div class="empty">No private conversations yet.</div>';return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div><div class="card"><h3>Start a private conversation</h3><p class="hint">Only administrators can start conversations. The customer receives an invitation and can reply.</p><label for="private-person">Customer</label><select id="private-person"><option value="">Choose a customer</option>'+options+'</select><button class="btn gold" data-act="adminStartPrivate">Open private chat</button></div><div class="card"><h3>Your private conversations</h3>'+threads+'</div>';}
 async function adminMessagesLoad(){const [p,c]=await Promise.all([sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name'),sb.from('private_conversations').select('id,admin_id,user_id,last_message_at').eq('admin_id',S.user.id).order('last_message_at',{ascending:false})]);if(p.error)throw p.error;if(c.error)throw c.error;S.admin.people=p.data||[];S.admin.conversations=c.data||[];}
 ACT.adminSendAnnouncement=async(_,btn)=>{const title=$('ann-title').value.trim(),body=$('ann-body').value.trim(),target=$('ann-target').value,ids=target==='selected'?Array.from($('ann-users').selectedOptions).map(o=>o.value):null;if(!title||!body)return toast('Enter an announcement title and message.');if(target==='selected'&&!ids.length)return toast('Select at least one customer.');btn.disabled=true;try{const{error}=await sb.rpc('admin_send_announcement',{p_title:title,p_body:body,p_recipient_ids:ids});if(error)throw error;$('ann-title').value='';$('ann-body').value='';toast('Announcement sent successfully.');}catch(e){toast('Could not send announcement: '+friendly(e));}finally{btn.disabled=false;}};
 
@@ -2308,6 +2308,58 @@ ACT.privateChatSecurityCancel=()=>privateChatSecurityCancel();
 ACT.privateChatVerify=()=>privateChatVerify();
 ACT.privateChatRemoveImage=()=>privateChatClearImage();
 ACT.privateOpen=id=>privateChatOpen(id);
+let privateChatDeleteArmed=null;
+async function privateChatRemoveConversationFiles(conversationId){
+ const bucket=sb.storage.from('private-chat-images');
+ const root=await bucket.list(conversationId,{limit:1000});
+ if(root.error)throw root.error;
+ const paths=[];
+ for(const folder of (root.data||[])){
+  if(folder.id!==null&&folder.id!==undefined)continue;
+  let offset=0;
+  while(true){
+   const page=await bucket.list(conversationId+'/'+folder.name,{limit:1000,offset});
+   if(page.error)throw page.error;
+   const files=(page.data||[]).filter(item=>item.id!==null&&item.id!==undefined);
+   for(const file of files)paths.push(conversationId+'/'+folder.name+'/'+file.name);
+   if((page.data||[]).length<1000)break;
+   offset+=1000;
+  }
+ }
+ for(let i=0;i<paths.length;i+=100){
+  const removed=await bucket.remove(paths.slice(i,i+100));
+  if(removed.error)throw removed.error;
+ }
+}
+ACT.adminDeletePrivate=async(id,btn)=>{
+ if(!S.access?.is_admin||!id)return toast('Administrator access required.');
+ if(privateChatDeleteArmed!==id){
+  privateChatDeleteArmed=id;
+  btn.textContent='Confirm permanent deletion';
+  btn.classList.add('danger');
+  toast('Click Confirm permanent deletion to erase this conversation.');
+  return;
+ }
+ privateChatDeleteArmed=null;
+ btn.disabled=true;btn.textContent='Deleting…';
+ try{
+  await privateChatRemoveConversationFiles(id);
+  const{error}=await sb.rpc('admin_delete_private_conversation',{p_conversation_id:id});
+  if(error)throw error;
+  if(privateChatId===id){
+   if(privateChatChannel){sb.removeChannel(privateChatChannel);privateChatChannel=null}
+   privateChatImageUrls.forEach(url=>URL.revokeObjectURL(url));privateChatImageUrls=[];
+   privateChatId=null;privateChatCryptoKey=null;privateChatPeerVerified=false;privateChatVerifyKey='';
+   closeSheet('private-chat');
+  }
+  await adminMessagesLoad();
+  renderAdmin();
+  toast('Private conversation permanently deleted.');
+ }catch(e){
+  btn.disabled=false;btn.textContent='Delete';
+  toast('Deletion did not finish: '+friendly(e)+'. The conversation has not been removed from the database; retry deletion.');
+ }
+};
 ACT.adminStartPrivate=async(_,btn)=>{
  const uid=$('private-person').value;if(!uid)return toast('Choose a customer first.');
  btn.disabled=true;try{const{data,error}=await sb.rpc('admin_start_private_conversation',{p_user_id:uid});if(error)throw error;if(!data)throw new Error('Could not create conversation.');await adminMessagesLoad();renderAdmin();await privateChatOpen(data)}
