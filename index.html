@@ -2107,7 +2107,7 @@ async function privateChatConversationKey(conversationId,peerId){
  );
  const ownFingerprint=await privateChatFingerprint(identity.publicJwk);
  const peerFingerprint=await privateChatFingerprint(jwk);
- const safetyDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode([ownFingerprint,peerFingerprint].sort().join('|')));
+ const safetyDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode([ownFingerprint,peerFingerprint].sort().join('|'))));
  privateChatPeerFingerprint=Array.from(safetyDigest).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join(' ');
  const pin='pippulse_e2ee_peer_'+S.user.id+'_'+peerId+'_'+conversationId;
  let previous=null;try{previous=localStorage.getItem(pin)}catch(_){}
