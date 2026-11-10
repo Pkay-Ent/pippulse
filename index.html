@@ -1453,7 +1453,7 @@ async function submitAuth(){
       if(!country)throw new Error('Select your country.');
       const phone=normPhone($('a-phone').value,country);
       if(!phone)throw new Error(country==='Ghana'?'Enter a valid Ghana mobile number, e.g., +233 24 000 0000.':'Enter a valid phone number with country code, e.g., +233 24 000 0000.');
-      if(pw.length<8||!/[A-Z]/.test(pw)||!/[a-z]/.test(pw)||!/[0-9]/.test(pw)||!/[^ws]/.test(pw))throw new Error('Use at least 8 characters with an uppercase letter, lowercase letter, number and symbol.');
+      if(pw.length<8||!/[A-Z]/.test(pw)||!/[a-z]/.test(pw)||!/[0-9]/.test(pw)||!/[^A-Za-z0-9]/.test(pw))throw new Error('Use at least 8 characters with an uppercase letter, lowercase letter, number and symbol.');
       const{data:avail,error:ue}=await sb.rpc('is_username_available',{p_username:username});
       if(ue)throw new Error('We could not verify that username is available. Please try again.');
       if(avail!==true)throw new Error('That username is already taken. Please choose another.');
