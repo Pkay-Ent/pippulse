@@ -505,7 +505,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
 #s-private-chat .private-chat-feed .chat-meta b{color:var(--tx)}#s-private-chat .private-chat-feed .chat-meta time{font-size:.66rem}
 #s-private-chat .private-chat-compose{position:relative;bottom:auto;flex:none;margin-top:.15rem}
 #s-private-chat .private-chat-compose .chat-input-shell{min-height:2.65rem}#s-private-chat .private-chat-compose textarea{min-height:2.2rem;height:2.2rem;max-height:7rem}
-#s-private-chat .private-chat-note{color:var(--mut);font-size:.68rem;text-align:center;flex:none}
+#s-private-chat .private-chat-note{color:var(--mut);font-size:.68rem;text-align:center;flex:none}.private-legacy{display:block;color:var(--mut);font-size:.66rem;margin-top:.25rem}
 #s-private-chat #private-chat-preview:empty{display:none}
 </style>
 </head>
@@ -685,7 +685,7 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
   <button class='btn gold' data-act='resetSave'>Save new password</button>
 </div></div>
 
-<div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small id="private-chat-subtitle">Private conversation · Only you and the other participant</small></div><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small class="private-chat-note">PNG, JPG or WebP images up to 10 MB. Your messages are visible only to you and the initiating admin.</small></div></div>
+<div class="sheet private-chat-sheet" id="s-private-chat" role="dialog" aria-modal="true"><div class="box private-chat-box"><div class="private-chat-top"><div class="private-chat-avatar">P</div><div class="private-chat-heading"><h3 id="private-chat-title">PipPulse Admin</h3><small id="private-chat-subtitle">Private conversation · Only you and the other participant</small></div><button class="btn mini" data-act="closeSheet" data-id="private-chat" aria-label="Close private chat">Close</button></div><div id="private-chat-feed" class="private-chat-feed" aria-live="polite"></div><div id="private-chat-preview"></div><form class="chat-compose private-chat-compose" onsubmit="return false"><label class="chat-attach" for="private-chat-image" aria-label="Attach an image" title="Attach an image"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.9 1.9 0 0 1-2.6-2.6l8.5-8.5"/></svg></label><input id="private-chat-image" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="chat-input-shell"><textarea id="private-chat-input" maxlength="2000" rows="1" placeholder="Message PipPulse Admin…" aria-label="Write a private message"></textarea></div><button class="btn gold" id="private-chat-send" type="button" data-act="privateChatSend" aria-label="Send message"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="#ffd45c" stroke="#b96f08" stroke-width="1.2" stroke-linejoin="round"/></svg></button></form><small class="private-chat-note">End-to-end encrypted. Your recovery passphrase is required to unlock chats on new devices.</small></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -2010,42 +2010,206 @@ async function loadPrivateConversations({silent=false}={}){
  }catch(e){if(!silent)console.warn('Could not load private conversations:',e)}
 }
 let privateChatId=null,privateChatFile=null,privateChatPreview=null,privateChatChannel=null,privateChatBusy=false,privateChatOtherName='PipPulse Admin';
+let privateChatIdentity=null,privateChatCryptoKey=null,privateChatPeerFingerprint='',privateChatImageUrls=[];
+const PRIVATE_CHAT_KDF_ITERATIONS=310000;
+const privateChatEncoder=new TextEncoder();
+const privateChatDecoder=new TextDecoder();
+
+function privateChatB64(bytes){
+ let bin='';const a=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+ for(let i=0;i<a.length;i++)bin+=String.fromCharCode(a[i]);
+ return btoa(bin);
+}
+function privateChatUnB64(value){
+ const bin=atob(value);const out=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+ return out;
+}
+function privateChatRandom(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return a}
+async function privateChatWrapKey(passphrase,salt,iterations){
+ const material=await crypto.subtle.importKey('raw',privateChatEncoder.encode(passphrase),'PBKDF2',false,['deriveKey']);
+ return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function privateChatFingerprint(jwk){
+ const stable=JSON.stringify({kty:jwk.kty,crv:jwk.crv,x:jwk.x,y:jwk.y});
+ const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',privateChatEncoder.encode(stable)));
+ return Array.from(digest).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join(' ');
+}
+async function privateChatSaveNewIdentity(passphrase){
+ const pair=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
+ const privateJwk=await crypto.subtle.exportKey('jwk',pair.privateKey);
+ const publicJwk=await crypto.subtle.exportKey('jwk',pair.publicKey);
+ const salt=privateChatRandom(16),iv=privateChatRandom(12);
+ const wrapKey=await privateChatWrapKey(passphrase,salt,PRIVATE_CHAT_KDF_ITERATIONS);
+ const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv},wrapKey,privateChatEncoder.encode(JSON.stringify(privateJwk)));
+ const vault={user_id:S.user.id,wrapped_private_key:privateChatB64(wrapped),salt:privateChatB64(salt),iv:privateChatB64(iv),kdf_iterations:PRIVATE_CHAT_KDF_ITERATIONS,key_version:1};
+ const v=await sb.from('private_chat_key_vault').upsert(vault,{onConflict:'user_id'});
+ if(v.error)throw v.error;
+ const p=await sb.from('private_chat_public_keys').upsert({user_id:S.user.id,public_jwk:publicJwk,key_version:1,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(p.error)throw p.error;
+ privateChatIdentity={userId:S.user.id,privateKey:pair.privateKey,publicJwk};
+ return privateChatIdentity;
+}
+async function privateChatUnlockIdentity(passphrase,vault){
+ const salt=privateChatUnB64(vault.salt),iv=privateChatUnB64(vault.iv);
+ const wrapKey=await privateChatWrapKey(passphrase,salt,vault.kdf_iterations);
+ let raw;
+ try{
+  raw=await crypto.subtle.decrypt({name:'AES-GCM',iv},wrapKey,privateChatUnB64(vault.wrapped_private_key));
+ }catch(_){throw new Error('That recovery passphrase is incorrect.')}
+ const jwk=JSON.parse(privateChatDecoder.decode(raw));
+ const privateKey=await crypto.subtle.importKey('jwk',jwk,{name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
+ const own=await sb.from('private_chat_public_keys').select('public_jwk').eq('user_id',S.user.id).maybeSingle();
+ if(own.error)throw own.error;
+ let publicJwk=own.data?.public_jwk;
+ if(!publicJwk){
+  publicJwk={kty:jwk.kty,crv:jwk.crv,x:jwk.x,y:jwk.y,ext:true,key_ops:[]};
+  const save=await sb.from('private_chat_public_keys').upsert({user_id:S.user.id,public_jwk:publicJwk,key_version:1},{onConflict:'user_id'});
+  if(save.error)throw save.error;
+ }
+ privateChatIdentity={userId:S.user.id,privateKey,publicJwk};
+ return privateChatIdentity;
+}
+async function privateChatEnsureIdentity(){
+ if(!window.crypto?.subtle)throw new Error('This browser does not support secure private chat encryption. Please use an updated browser over HTTPS.');
+ if(privateChatIdentity?.userId===S.user.id)return privateChatIdentity;
+ privateChatIdentity=null;privateChatCryptoKey=null;
+ const q=await sb.from('private_chat_key_vault').select('wrapped_private_key,salt,iv,kdf_iterations,key_version').eq('user_id',S.user.id).maybeSingle();
+ if(q.error)throw q.error;
+ if(!q.data){
+  const pass=window.prompt('Create a private-chat recovery passphrase (at least 12 characters). You will need it on every new device and after refreshing this browser.');
+  if(pass===null)throw new Error('Encryption setup was cancelled.');
+  if(pass.length<12)throw new Error('Use a recovery passphrase with at least 12 characters.');
+  const confirmPass=window.prompt('Re-enter your private-chat recovery passphrase.');
+  if(confirmPass!==pass)throw new Error('The recovery passphrases did not match. Please open the chat and try again.');
+  return privateChatSaveNewIdentity(pass);
+ }
+ for(let attempt=0;attempt<3;attempt++){
+  const pass=window.prompt('Enter your private-chat recovery passphrase to unlock your encrypted conversations.');
+  if(pass===null)throw new Error('Private chat remains locked. Your passphrase was not entered.');
+  try{return await privateChatUnlockIdentity(pass,q.data)}
+  catch(e){if(attempt===2)throw e;alert('The passphrase did not unlock this key. Please try again.')}
+ }
+ throw new Error('Could not unlock your private-chat key.');
+}
+async function privateChatConversationKey(conversationId,peerId){
+ const identity=await privateChatEnsureIdentity();
+ const peer=await sb.from('private_chat_public_keys').select('public_jwk,key_version').eq('user_id',peerId).maybeSingle();
+ if(peer.error)throw peer.error;
+ if(!peer.data?.public_jwk)throw new Error('The other participant has not set up private-chat encryption yet. Ask them to open this conversation once, then reopen it here.');
+ const jwk=peer.data.public_jwk;
+ const publicKey=await crypto.subtle.importKey('jwk',jwk,{name:'ECDH',namedCurve:'P-256'},false,[]);
+ const shared=await crypto.subtle.deriveBits({name:'ECDH',public:publicKey},identity.privateKey,256);
+ const material=await crypto.subtle.importKey('raw',shared,'HKDF',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey(
+  {name:'HKDF',hash:'SHA-256',salt:privateChatEncoder.encode('PipPulse private chat v1:'+conversationId),info:privateChatEncoder.encode('PipPulse E2EE message key')},
+  material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']
+ );
+ privateChatPeerFingerprint=await privateChatFingerprint(jwk);
+ const pin='pippulse_e2ee_peer_'+S.user.id+'_'+peerId+'_'+conversationId;
+ let previous=null;try{previous=localStorage.getItem(pin)}catch(_){}
+ if(previous&&previous!==privateChatPeerFingerprint)throw new Error('The other participant’s encryption key has changed. Do not send messages until you have verified this change with them.');
+ if(!previous){try{localStorage.setItem(pin,privateChatPeerFingerprint)}catch(_){}}
+ privateChatCryptoKey=key;
+ return key;
+}
+async function privateChatEncrypt(value,key){
+ const iv=privateChatRandom(12);
+ const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,value instanceof ArrayBuffer?value:privateChatEncoder.encode(value));
+ return {cipher:privateChatB64(cipher),iv:privateChatB64(iv)};
+}
+async function privateChatDecrypt(value,iv,key){
+ return crypto.subtle.decrypt({name:'AES-GCM',iv:privateChatUnB64(iv)},key,privateChatUnB64(value));
+}
 async function privateChatOpen(id){
  if(!S.user||!id)return;
  if(privateChatChannel){sb.removeChannel(privateChatChannel);privateChatChannel=null}
- privateChatId=id;$('private-chat-feed').innerHTML='<div class="empty">Loading conversation…</div>';openSheet('private-chat');
+ privateChatId=id;privateChatCryptoKey=null;
+ $('private-chat-feed').innerHTML='<div class="empty">Preparing end-to-end encryption…</div>';openSheet('private-chat');
  try{
   const{data:c,error}=await sb.from('private_conversations').select('id,admin_id,user_id').eq('id',id).maybeSingle();if(error)throw error;
   if(!c||![c.admin_id,c.user_id].includes(S.user.id))throw new Error('This conversation is not available to your account.');
   const other=c.admin_id===S.user.id?c.user_id:c.admin_id;
-  const{data:p}=await sb.from('profiles').select('display_name,username').eq('id',other).maybeSingle();
+  const identity=await privateChatEnsureIdentity();
+  const peerKey=await privateChatConversationKey(id,other);
+  const otherProfile=await sb.from('profiles').select('display_name,username').eq('id',other).maybeSingle();
+  const p=otherProfile.data;
   privateChatOtherName=p?.display_name||p?.username||(S.access?.is_admin?'Customer':'PipPulse Admin');
   $('private-chat-title').textContent=privateChatOtherName;
-  $('private-chat-subtitle').textContent=S.access?.is_admin?'Private conversation · Only you and this customer':'Private conversation · Only you and PipPulse Admin';
+  $('private-chat-subtitle').textContent='End-to-end encrypted · Safety code: '+privateChatPeerFingerprint+' · Compare this code with the other participant';
+  $('private-chat-note').textContent='Messages and images are encrypted on your device. Keep your recovery passphrase safe; PipPulse cannot recover it.';
   await privateChatLoad();
   privateChatChannel=sb.channel('private-chat-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'private_messages',filter:'conversation_id=eq.'+id},()=>privateChatLoad()).subscribe();
- }catch(e){$('private-chat-feed').innerHTML='<div class="empty">'+esc(friendly(e))+'</div>'}
+ }catch(e){
+  $('private-chat-feed').innerHTML='<div class="empty">'+esc(friendly(e))+'</div>';
+  $('private-chat-subtitle').textContent='Encryption setup required';
+  $('private-chat-note').textContent='Your recovery passphrase is never sent to PipPulse.';
+ }
 }
 async function privateChatLoad(){
- if(!privateChatId)return;
- const{data,error}=await sb.from('private_messages').select('id,sender_id,body,image_path,created_at').eq('conversation_id',privateChatId).order('created_at',{ascending:true}).limit(200);
+ if(!privateChatId||!privateChatCryptoKey)return;
+ const{data,error}=await sb.from('private_messages').select('id,sender_id,body,image_path,created_at,encryption_version,body_iv,image_iv,image_mime_type').eq('conversation_id',privateChatId).order('created_at',{ascending:true}).limit(200);
  if(error)return toast('Could not load private messages: '+friendly(error));
+ privateChatImageUrls.forEach(u=>URL.revokeObjectURL(u));privateChatImageUrls=[];
  const rows=data||[];
- await Promise.all(rows.map(async m=>{if(m.image_path){const{data:u,error:ie}=await sb.storage.from('private-chat-images').createSignedUrl(m.image_path,3600);m.image_url=!ie&&u?u.signedUrl:null}}));
+ await Promise.all(rows.map(async m=>{
+  if(m.encryption_version===1){
+   try{m.decrypted_body=m.body?privateChatDecoder.decode(await privateChatDecrypt(m.body,m.body_iv,privateChatCryptoKey)):''}
+   catch(_){m.decrypt_error=true}
+   if(m.image_path){
+    try{
+     const{data:blob,error:ie}=await sb.storage.from('private-chat-images').download(m.image_path);
+     if(ie)throw ie;
+     const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:privateChatUnB64(m.image_iv)},privateChatCryptoKey,await blob.arrayBuffer());
+     const url=URL.createObjectURL(new Blob([clear],{type:m.image_mime_type||'image/png'}));
+     privateChatImageUrls.push(url);m.image_url=url;
+    }catch(_){m.image_error=true}
+   }
+  }else{
+   m.decrypted_body=m.body||'';
+   m.legacy=true;
+  }
+ }));
  const feed=$('private-chat-feed');if(!feed)return;
- feed.innerHTML=rows.length?rows.map(m=>'<article class="chat-msg '+(m.sender_id===S.user.id?'mine':'')+'"><div class="chat-meta"><b>'+(m.sender_id===S.user.id?'You':esc(privateChatOtherName))+'</b><time>'+esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))+'</time></div>'+(m.body?'<p>'+esc(m.body)+'</p>':'')+(m.image_url?'<a href="'+esc(m.image_url)+'" target="_blank" rel="noopener noreferrer"><img class="chat-image" src="'+esc(m.image_url)+'" alt="Private chat image" loading="lazy"></a>':'')+'</article>').join(''):'<div class="empty">This is the beginning of your private conversation. Send a message to the admin whenever you need help.</div>';
+ feed.innerHTML=rows.length?rows.map(m=>{
+  const body=m.decrypt_error?'Unable to decrypt this message. Check that your recovery passphrase and the other participant’s key are correct.':m.decrypted_body;
+  const legacy=m.legacy?'<small class="private-legacy">Older message · sent before end-to-end encryption was enabled</small>':'';
+  return '<article class="chat-msg '+(m.sender_id===S.user.id?'mine':'')+'"><div class="chat-meta"><b>'+(m.sender_id===S.user.id?'You':esc(privateChatOtherName))+'</b><time>'+esc(new Date(m.created_at).toLocaleString([],{dateStyle:'short',timeStyle:'short'}))+'</time></div>'+legacy+(body?'<p>'+esc(body)+'</p>':'')+(m.image_url?'<a href="'+esc(m.image_url)+'" target="_blank" rel="noopener noreferrer"><img class="chat-image" src="'+esc(m.image_url)+'" alt="Decrypted private chat image" loading="lazy"></a>':'')+(m.image_error?'<p>Could not decrypt this image.</p>':'')+'</article>';
+ }).join(''):'<div class="empty">This is the beginning of your end-to-end encrypted conversation. Messages and images are encrypted before upload.</div>';
  feed.scrollTop=feed.scrollHeight;
 }
-function privateChatClearImage(){if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);privateChatPreview=null;privateChatFile=null;if($('private-chat-image'))$('private-chat-image').value='';if($('private-chat-preview'))$('private-chat-preview').innerHTML=''}
+function privateChatClearImage(){
+ if(privateChatPreview)URL.revokeObjectURL(privateChatPreview);
+ privateChatPreview=null;privateChatFile=null;
+ if($('private-chat-image'))$('private-chat-image').value='';
+ if($('private-chat-preview'))$('private-chat-preview').innerHTML='';
+}
 async function privateChatSend(){
  if(!privateChatId||!S.user||privateChatBusy)return;
- const body=$('private-chat-input').value.trim(),file=privateChatFile;if(!body&&!file)return toast('Write a message or choose an image.');if(body.length>2000)return toast('Private messages are limited to 2000 characters.');
+ const body=$('private-chat-input').value.trim(),file=privateChatFile;
+ if(!body&&!file)return toast('Write a message or choose an image.');
+ if(body.length>2000)return toast('Private messages are limited to 2000 characters.');
+ if(!privateChatCryptoKey)return toast('Unlock end-to-end encryption before sending.');
  privateChatBusy=true;$('private-chat-send').disabled=true;let path=null;
  try{
-  if(file){const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];path=privateChatId+'/'+S.user.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('private-chat-images').upload(path,file,{contentType:file.type,upsert:false});if(up.error)throw up.error}
-  const{error}=await sb.from('private_messages').insert({conversation_id:privateChatId,sender_id:S.user.id,body,image_path:path});if(error){if(path)await sb.storage.from('private-chat-images').remove([path]);throw error}
+  let encryptedBody='',bodyIv=null,imageIv=null,imageMime=null;
+  if(body){const encrypted=await privateChatEncrypt(body,privateChatCryptoKey);encryptedBody=encrypted.cipher;bodyIv=encrypted.iv}
+  if(file){
+   const encrypted=await privateChatEncrypt(await file.arrayBuffer(),privateChatCryptoKey);
+   imageIv=encrypted.iv;imageMime=file.type;
+   const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];
+   path=privateChatId+'/'+S.user.id+'/'+crypto.randomUUID()+'.enc';
+   const bytes=privateChatUnB64(encrypted.cipher);
+   const up=await sb.storage.from('private-chat-images').upload(path,new Blob([bytes],{type:'application/octet-stream'}),{contentType:'application/octet-stream',upsert:false});
+   if(up.error)throw up.error;
+  }
+  const{error}=await sb.from('private_messages').insert({
+   conversation_id:privateChatId,sender_id:S.user.id,body:encryptedBody,image_path:path,
+   encryption_version:1,body_iv:bodyIv,image_iv:imageIv,image_mime_type:imageMime
+  });
+  if(error){if(path)await sb.storage.from('private-chat-images').remove([path]);throw error}
   $('private-chat-input').value='';privateChatClearImage();await privateChatLoad();
- }catch(e){toast('Could not send private message: '+friendly(e))}
+ }catch(e){toast('Could not send encrypted private message: '+friendly(e))}
  finally{privateChatBusy=false;$('private-chat-send').disabled=false}
 }
 ACT.privateChatSend=()=>privateChatSend();
