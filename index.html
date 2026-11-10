@@ -305,8 +305,10 @@ nav button.on .ico{animation:pop .4s var(--ease)}
 .sheet{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;background:rgba(3,5,9,.75);backdrop-filter:blur(4px)}
 .sheet.show{display:flex;animation:fade .2s both}
 .box{width:100%;max-width:var(--w);max-height:90dvh;overflow:auto;background:var(--s1);border:1px solid var(--line2);border-bottom:0;border-radius:1.5rem 1.5rem 0 0;padding:1rem max(1.2rem,env(safe-area-inset-right)) calc(1.5rem + env(safe-area-inset-bottom)) max(1.2rem,env(safe-area-inset-left));animation:up .35s var(--ease);box-shadow:0 -10px 40px rgba(0,0,0,0.5)}
-.grab{width:2.5rem;height:.28rem;border-radius:99px;background:var(--line2);margin:0 auto 1rem;position:relative;touch-action:pan-y;cursor:grab}
-.grab:before{content:"";position:absolute;left:-1.5rem;right:-1.5rem;top:-.85rem;bottom:-.85rem}
+.box.sheet-expanded{height:96dvh;max-height:96dvh}
+.grab{width:2.5rem;height:.28rem;border-radius:99px;background:var(--line2);margin:0 auto 1rem;position:relative;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.grab:before{content:"";position:absolute;left:-2rem;right:-2rem;top:-1rem;bottom:-1rem}
+.grab:active{cursor:grabbing}
 .box h3{margin:.5rem 0 .3rem;font:700 1.45rem var(--fd);letter-spacing:-.01em}
 .sicon{width:3rem;height:3rem;border-radius:1rem;display:grid;place-items:center;margin-bottom:.8rem;color:var(--ink);background:var(--gbtn);animation:pop .5s var(--ease)}
 label{display:block;margin:.85rem 0 .35rem;font-size:.82rem;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.03em}
@@ -2172,23 +2174,42 @@ document.addEventListener('touchmove',e=>{
 document.addEventListener('touchend',()=>{pullStartY=null;pullTarget=null},{passive:true});
 document.addEventListener('touchcancel',()=>{pullStartY=null;pullTarget=null},{passive:true});
 
-/* Dragging a sheet's grab handle downward closes that sheet without reloading. */
+/* Drag the sheet handle down to dismiss, or up to expand the sheet. */
 document.querySelectorAll('.sheet .grab').forEach(handle=>{
-  let startY=null;
-  handle.addEventListener('touchstart',e=>{
-    if(e.touches.length!==1)return;
-    startY=e.touches[0].clientY;
-  },{passive:true});
-  handle.addEventListener('touchend',e=>{
-    if(startY===null)return;
-    const delta=e.changedTouches[0].clientY-startY;
-    startY=null;
-    if(delta>70){
-      const sheet=handle.closest('.sheet');
+  let startY=null,lastY=null,dragBox=null,dragPointer=null;
+  handle.addEventListener('pointerdown',e=>{
+    if(!e.isPrimary||e.button!==0)return;
+    const sheet=handle.closest('.sheet');
+    if(!sheet||!sheet.classList.contains('show'))return;
+    dragBox=sheet.querySelector('.box');
+    if(!dragBox)return;
+    startY=lastY=e.clientY;dragPointer=e.pointerId;
+    dragBox.style.transition='none';
+    try{handle.setPointerCapture(e.pointerId)}catch(_){}
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove',e=>{
+    if(startY===null||e.pointerId!==dragPointer||!dragBox)return;
+    lastY=e.clientY;
+    const delta=lastY-startY;
+    dragBox.style.transform='translateY('+Math.max(-100,Math.min(260,delta))+'px)';
+  });
+  const finishDrag=e=>{
+    if(startY===null||!dragBox||e.pointerId!==dragPointer)return;
+    const delta=(typeof e.clientY==='number'?e.clientY:lastY)-startY;
+    const box=dragBox,sheet=handle.closest('.sheet');
+    startY=null;dragPointer=null;dragBox=null;
+    box.style.transition='transform .22s ease,height .22s ease';
+    box.style.transform='';
+    if(delta>85){
       if(sheet&&sheet.classList.contains('show'))closeSheet(sheet.id.replace(/^s-/,''));
+    }else if(delta<-55){
+      box.classList.add('sheet-expanded');
     }
-  },{passive:true});
-  handle.addEventListener('touchcancel',()=>{startY=null},{passive:true});
+    setTimeout(()=>{box.style.transition='';},240);
+  };
+  handle.addEventListener('pointerup',finishDrag);
+  handle.addEventListener('pointercancel',finishDrag);
 });
 
 let chatTouchStart=null;
