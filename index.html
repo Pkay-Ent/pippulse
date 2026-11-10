@@ -1929,13 +1929,14 @@ function showAdmin(){
   VIEWS.forEach(x=>{$('v-'+x).hidden=true;$('n-'+x).classList.remove('on')});
   $('v-admin').hidden=false;scrollTo({top:0});renderAdmin();loadAdminTab();
 }
-const ADM=[['payments','Payments'],['post','Post signal'],['settings','Settings'],['audit','Activity']];
+const ADM=[['payments','Payments'],['post','Post signal'],['settings','Settings'],['audit','Activity'],['messages','Messages']];
 function renderAdmin(){
   const A=S.admin;let inner;
   if(A.msg)inner=`<div class='empty'>${esc(A.msg)}</div>`;
   else if(A.tab==='payments')inner=adminPayHtml();
   else if(A.tab==='post')inner=adminPostHtml();
   else if(A.tab==='settings')inner=adminSettingsHtml();
+  else if(A.tab==='messages')inner=adminMessagesHtml();
   else inner=adminAuditHtml();
   $('v-admin').innerHTML=`<div class='sec-h'><h3>Admin dashboard</h3><button class='btn mini' data-act='adminBack'>Back</button></div>
   <div class='atabs'>${ADM.map(t=>`<button data-act='adminTab' data-id='${t[0]}' class='${A.tab===t[0]?'on':''}'>${t[1]}</button>`).join('')}</div>${inner}`;
@@ -1946,6 +1947,7 @@ async function loadAdminTab(){
     if(A.tab==='payments'){A.msg='Loading…';renderAdmin();const{data,error}=await sb.rpc('admin_list_payments',{p_status:A.filter});A.msg='';if(error)throw error;A.list=data||[]}
     else if(A.tab==='audit'){A.msg='Loading…';renderAdmin();const{data,error}=await sb.rpc('admin_list_audit',{p_limit:50});A.msg='';if(error)throw error;A.audit=data||[]}
     else if(A.tab==='settings'){const{data,error}=await sb.from('app_settings').select('key,value');if(error)throw error;A.settings={};(data||[]).forEach(r=>{A.settings[r.key]=r.value})}
+    else if(A.tab==='messages'){A.msg='Loading…';renderAdmin();await adminMessagesLoad();A.msg=''}
   }catch(e){
     A.msg=/could not find|does not exist|42883|PGRST202/i.test(String((e&&(e.code+' '+e.message))||''))?'Admin tools are not installed yet. Run pippulse_step2_payments_admin.sql in Supabase.':friendly(e);
   }
@@ -1953,6 +1955,11 @@ async function loadAdminTab(){
 }
 ACT.adminTab=id=>{S.admin.tab=id;S.admin.msg='';renderAdmin();loadAdminTab()};
 ACT.adminFilter=id=>{S.admin.filter=id;loadAdminTab()};
+
+
+function adminMessagesHtml(){const people=S.admin.people||[];return '<div class="card"><h3>Send an announcement</h3><p class="hint">Send an in-app notification and push alert to all customers or selected customers.</p><label for="ann-title">Title</label><input id="ann-title" maxlength="100" placeholder="Announcement title"><label for="ann-body">Message</label><textarea id="ann-body" rows="4" maxlength="2000" placeholder="Write your announcement…"></textarea><label for="ann-target">Recipients</label><select id="ann-target"><option value="all">All customers</option><option value="selected">Selected customers</option></select><div id="ann-people" hidden><label for="ann-users">Choose customers</label><select id="ann-users" multiple size="5">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.username||p.email)+' · '+esc(p.email||'')+'</option>').join('')+'</select></div><button class="btn gold" data-act="adminSendAnnouncement">Send announcement</button></div>';} 
+async function adminMessagesLoad(){const{data,error}=await sb.from('profiles').select('id,display_name,email,username,role').neq('role','admin').order('display_name');if(error)throw error;S.admin.people=data||[];}
+ACT.adminSendAnnouncement=async(_,btn)=>{const title=$('ann-title').value.trim(),body=$('ann-body').value.trim(),target=$('ann-target').value,ids=target==='selected'?Array.from($('ann-users').selectedOptions).map(o=>o.value):null;if(!title||!body)return toast('Enter an announcement title and message.');if(target==='selected'&&!ids.length)return toast('Select at least one customer.');btn.disabled=true;try{const{error}=await sb.rpc('admin_send_announcement',{p_title:title,p_body:body,p_recipient_ids:ids});if(error)throw error;$('ann-title').value='';$('ann-body').value='';toast('Announcement sent successfully.');}catch(e){toast('Could not send announcement: '+friendly(e));}finally{btn.disabled=false;}};
 
 function adminPayHtml(){
   const A=S.admin,F=[['pending','Pending'],['activated','Activated'],['rejected','Rejected'],['all','All']];
@@ -2143,6 +2150,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#chat-context')&&!e.target.closest('.chat-msg'))closeChatMenu();
 });
 document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='ann-target'){const box=$('ann-people');if(box)box.hidden=e.target.value!=='selected'}
   if(e.target&&e.target.id==='chat-image'&&e.target.files&&e.target.files[0]){
     const f=e.target.files[0];
     if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>10485760){e.target.value='';toast('Choose a PNG, JPG or WebP image up to 10 MB.');return}
