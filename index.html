@@ -2128,6 +2128,35 @@ document.addEventListener('change',e=>{
     toast('Photo selected: '+f.name);
   }
 });
+/* Pull down at the top of the page or an open sheet to reload PipPulse. */
+let pullStartY=null,pullTarget=null,pullReloading=false;
+document.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1||pullReloading)return;
+  const sheet=document.querySelector('.sheet.show');
+  if(sheet){
+    const box=sheet.querySelector('.box');
+    if(!box||box.scrollTop>0||e.target.closest('input,textarea,select,button,a,[contenteditable="true"]')){pullStartY=null;pullTarget=null;return}
+    pullTarget=box;
+  }else{
+    if(window.scrollY>0){pullStartY=null;pullTarget=null;return}
+    pullTarget=document.documentElement;
+  }
+  pullStartY=e.touches[0].clientY;
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(pullStartY===null||pullReloading||e.touches.length!==1)return;
+  const dy=e.touches[0].clientY-pullStartY;
+  const sheet=document.querySelector('.sheet.show');
+  const stillAtTop=sheet?!!pullTarget&&pullTarget.scrollTop<=0:window.scrollY<=0;
+  if(dy>95&&stillAtTop){
+    pullReloading=true;pullStartY=null;
+    toast('Refreshing PipPulse…');
+    window.location.reload();
+  }else if(dy<0){pullStartY=null;pullTarget=null}
+},{passive:true});
+document.addEventListener('touchend',()=>{pullStartY=null;pullTarget=null},{passive:true});
+document.addEventListener('touchcancel',()=>{pullStartY=null;pullTarget=null},{passive:true});
+
 let chatTouchStart=null;
 document.addEventListener('touchstart',e=>{
   const msg=e.target.closest('.chat-msg');if(msg&&e.touches.length===1){
