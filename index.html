@@ -519,86 +519,44 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
 #s-private-chat .private-chat-note{color:var(--mut);font-size:.68rem;text-align:center;flex:none}.private-legacy{display:block;color:var(--mut);font-size:.66rem;margin-top:.25rem}
 #s-private-chat #private-chat-preview:empty{display:none}
 
-/* Community chat: use a bounded messenger layout so the composer never covers messages. */
-main:has(#v-chat:not([hidden])){padding-top:.55rem;padding-bottom:0}
-#v-chat:not([hidden]){
-  height:calc(100dvh - var(--nav) - 6.5rem - env(safe-area-inset-top));
-  min-height:0;display:flex;flex-direction:column;overflow:hidden;
-}
-#v-chat:not([hidden])>.phero{flex:none;padding:.1rem 0 0}
-#v-chat:not([hidden])>.phero h2{font-size:clamp(1.65rem,6vw,2rem);line-height:1.12}
-#v-chat:not([hidden])>.phero p{font-size:.86rem;line-height:1.35;margin:.25rem 0 0}
-#v-chat:not([hidden])>.chat-intro{flex:none;font-size:.78rem;line-height:1.35;margin:.35rem 0 .5rem}
-#v-chat .chat-wrap{flex:1;min-height:0;gap:.45rem;overflow:hidden}
-#v-chat .chat-pinned{flex:none;margin:0;padding:.55rem .7rem}
-#v-chat .chat-feed{flex:1 1 auto;min-height:0;max-height:none;height:auto;overflow-y:auto;padding:.15rem .1rem .65rem;overscroll-behavior:contain}
-#v-chat .chat-image-preview{flex:none;margin:0}
-#v-chat .chat-compose{position:relative;inset:auto;flex:none;min-height:3.15rem;padding:.32rem .45rem;gap:.45rem;border-radius:1.1rem;margin:0;background:rgba(19,26,38,.98)}
-#v-chat .chat-input-shell{min-height:2.35rem;padding:.12rem .35rem;gap:.2rem;border-radius:.9rem}
-#v-chat .chat-attach{width:2rem;height:2rem}
-#v-chat .chat-compose textarea{height:2.1rem;min-height:2.1rem;max-height:4rem;padding:.42rem .3rem;font-size:.9rem;line-height:1.3}
-#v-chat .chat-compose .btn{width:2.55rem;height:2.55rem;min-width:2.55rem}
-#v-chat .chat-compose .btn svg{width:1.7rem;height:1.7rem}
-#v-chat .chat-status{flex:none;margin:0 .25rem;font-size:.68rem;line-height:1.2}
-body.chat-nav-hidden #v-chat .chat-compose{bottom:auto}
-@media(max-height:720px){
-  #v-chat:not([hidden]){height:calc(100dvh - var(--nav) - 5.8rem - env(safe-area-inset-top))}
-  #v-chat:not([hidden])>.chat-intro{margin:.25rem 0 .35rem}
-  #v-chat .chat-status{display:none}
-}
-@media(max-width:380px){
-  #v-chat:not([hidden])>.chat-intro{font-size:.73rem}
-  #v-chat .chat-compose{gap:.3rem;padding:.25rem .35rem}
-}
 
-
-/* Community chat layout correction: keep the composer independently anchored and visible. */
-main:has(#v-chat:not([hidden])){padding-top:.8rem;padding-bottom:calc(var(--nav) + 5.2rem + env(safe-area-inset-bottom))}
-#v-chat:not([hidden]){
-  display:block!important;
-  height:auto!important;
-  min-height:0!important;
-  overflow:visible!important;
+/* Community chat — single, coherent messenger layout */
+main:has(#v-chat:not([hidden])){
+ height:calc(100dvh - var(--nav) - 4.9rem - env(safe-area-inset-top));min-height:0;
+ display:flex;flex-direction:column;
+ padding:.55rem max(1rem,env(safe-area-inset-right)) 0 max(1rem,env(safe-area-inset-left));overflow:hidden
 }
-#v-chat:not([hidden])>.phero{display:block;padding:.35rem .1rem 0}
-#v-chat:not([hidden])>.phero h2{font-size:clamp(1.75rem,6vw,2.1rem);line-height:1.12}
-#v-chat:not([hidden])>.phero p{font-size:.92rem;line-height:1.4;margin:.35rem 0 0}
-#v-chat:not([hidden])>.chat-intro{font-size:.8rem;line-height:1.4;margin:.45rem 0 .65rem}
-#v-chat .chat-wrap{display:flex;flex-direction:column;gap:.5rem;min-height:0;overflow:visible}
-#v-chat .chat-pinned{flex:none;margin:.1rem 0 .35rem;padding:.65rem .8rem}
-#v-chat .chat-feed{
-  display:flex;flex-direction:column;gap:.65rem;
-  height:auto;min-height:200px;max-height:calc(100dvh - 25rem);
-  overflow-y:auto;padding:.2rem .1rem 6.25rem;
-  overscroll-behavior:contain;scrollbar-gutter:stable;
-}
-#v-chat .chat-compose{
-  position:fixed!important;
-  left:max(1rem,env(safe-area-inset-left));
-  right:max(1rem,env(safe-area-inset-right));
-  bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .55rem);
-  z-index:35;width:min(calc(100% - 2rem),calc(var(--w) - 2rem));
-  min-height:3.35rem;margin:0 auto;padding:.35rem .45rem;
-  display:flex;align-items:center;gap:.45rem;
-  border-radius:1.1rem;background:rgba(25,32,46,.98);
-  box-shadow:0 8px 28px rgba(0,0,0,.38);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-}
-#v-chat .chat-input-shell{flex:1;min-width:0;min-height:2.5rem;padding:.12rem .35rem;gap:.2rem;border-radius:.9rem}
-#v-chat .chat-attach{width:2.05rem;height:2.05rem;flex:none}
-#v-chat .chat-compose textarea{flex:1;min-width:0;height:2.2rem;min-height:2.2rem;max-height:4rem;padding:.45rem .3rem;font-size:.9rem;line-height:1.3}
-#v-chat .chat-compose .btn{width:2.65rem;height:2.65rem;min-width:2.65rem;flex:none}
-#v-chat .chat-compose .btn svg{width:1.75rem;height:1.75rem}
-#v-chat .chat-status{margin:.25rem .2rem;font-size:.7rem}
-body.chat-nav-hidden #v-chat .chat-compose{bottom:calc(env(safe-area-inset-bottom) + .65rem)}
-@media(max-height:700px){
-  #v-chat .chat-feed{max-height:calc(100dvh - 21rem);min-height:150px}
-  #v-chat .chat-status{display:none}
-}
-@media(max-width:380px){
-  #v-chat .chat-compose{left:.65rem;right:.65rem;width:calc(100% - 1.3rem);gap:.3rem;padding:.28rem .35rem}
-  #v-chat .chat-compose .btn{width:2.45rem;height:2.45rem;min-width:2.45rem}
-}
+#v-chat:not([hidden]){flex:1 1 auto;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden}
+#v-chat>.phero{flex:none;padding:.15rem 0}
+#v-chat>.phero h2{font-size:1.55rem;line-height:1.15;letter-spacing:-.025em}
+#v-chat>.phero p{font-size:.82rem;line-height:1.3;margin:.18rem 0 0}
+#v-chat>.chat-intro{display:none}
+#v-chat .chat-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:.35rem;overflow:hidden}
+#v-chat .chat-pinned{flex:none;margin:.25rem 0 .1rem;padding:.5rem .65rem;border-radius:.7rem}
+#v-chat .chat-pinned-body b{font-size:.7rem;margin-bottom:.1rem}
+#v-chat .chat-pinned-body p{font-size:.8rem;line-height:1.3}
+#v-chat .chat-feed{flex:1 1 0;min-height:0;height:auto;max-height:none;display:flex;flex-direction:column;gap:.45rem;overflow-y:auto;overscroll-behavior:contain;padding:.35rem .05rem .55rem;scrollbar-width:thin}
+#v-chat .chat-msg{max-width:88%;padding:.55rem .7rem;border-radius:.85rem .85rem .85rem .2rem;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+#v-chat .chat-msg.mine{border-radius:.85rem .85rem .2rem .85rem}
+#v-chat .chat-meta{gap:.35rem;margin-bottom:.15rem;font-size:.66rem}
+#v-chat .chat-meta b{font-size:.72rem}
+#v-chat .chat-msg p{font-size:.86rem;line-height:1.38}
+#v-chat .chat-image{max-width:min(100%,280px);border-radius:.55rem}
+#v-chat .chat-typing{flex:none;margin:0 .35rem;min-height:0}
+#v-chat .chat-typing:empty{display:none}
+#v-chat .chat-quote{flex:none;margin:.1rem 0;padding:.4rem .6rem}
+#v-chat .chat-image-preview{flex:none;max-height:6.5rem;overflow:hidden;margin:.1rem 0}
+#v-chat .chat-image-preview img{max-height:6rem;object-fit:cover}
+#v-chat .chat-compose{position:relative;inset:auto;flex:none;display:flex;align-items:center;gap:.4rem;min-height:3.25rem;margin:.2rem 0 .35rem;padding:.28rem .38rem;border:1px solid var(--line2);border-radius:1.25rem;background:rgba(28,35,48,.98);box-shadow:0 3px 14px rgba(0,0,0,.22);backdrop-filter:blur(14px)}
+#v-chat .chat-input-shell{flex:1;min-width:0;min-height:2.55rem;display:flex;align-items:center;gap:.25rem;padding:.1rem .35rem;border:0;border-radius:1.1rem;background:transparent}
+#v-chat .chat-attach{width:2rem;height:2rem;flex:none}
+#v-chat .chat-compose textarea{flex:1;min-width:0;height:2.2rem;min-height:2.2rem;max-height:6rem;padding:.4rem .25rem;font-size:.9rem;line-height:1.35;resize:none}
+#v-chat .chat-compose .btn{flex:none;width:2.65rem;height:2.65rem;min-width:2.65rem;border-radius:50%;padding:0}
+#v-chat .chat-compose .btn svg{width:1.8rem;height:1.8rem}
+#v-chat .chat-status{display:none}
+body.chat-nav-hidden nav{transform:translateY(110%);opacity:0;pointer-events:none}
+@media(max-height:700px){main:has(#v-chat:not([hidden])){height:calc(100dvh - var(--nav) - 4.5rem - env(safe-area-inset-top))}#v-chat>.phero h2{font-size:1.4rem}}
+@media(min-width:700px){#v-chat .chat-compose{margin-bottom:.45rem}}
 
 </style>
 </head>
