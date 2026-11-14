@@ -200,9 +200,9 @@ nav button.on .ico{filter:none}
 .empty .btn{max-width:14rem;margin:1rem auto 0}
 .skel{height:11rem;border-radius:1rem;margin-bottom:1rem;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s1));background-size:200% 100%;animation:sh 1.3s linear infinite}
 .legal{margin:1.2rem .1rem 0;font-size:.78rem;color:var(--mut);line-height:1.4}
-.chat-wrap{display:flex;flex-direction:column;gap:.8rem;min-height:52vh}
-.chat-intro{color:var(--tx2);font-size:.88rem;margin:.35rem 0 0}
-.chat-feed{display:flex;flex-direction:column;gap:.65rem;max-height:55vh;min-height:260px;overflow:auto;padding:.2rem .1rem .8rem;overscroll-behavior:contain}
+.chat-wrap{display:flex;flex-direction:column;gap:.55rem;min-height:0}
+.chat-intro{color:var(--tx2);font-size:.88rem;margin:.25rem 0 0}
+.chat-feed{display:flex;flex-direction:column;gap:.65rem;max-height:calc(100dvh - 24rem);min-height:170px;overflow:auto;padding:.2rem .1rem .55rem;overscroll-behavior:contain;scrollbar-gutter:stable}
 .chat-msg{max-width:88%;align-self:flex-start;background:var(--s1);border:1px solid var(--line);border-radius:.9rem .9rem .9rem .25rem;padding:.7rem .8rem;overflow-wrap:anywhere}
 .chat-msg.mine{align-self:flex-end;background:rgba(245,192,66,.09);border-color:rgba(245,192,66,.22);border-radius:.9rem .9rem .25rem .9rem}
 .chat-pinned{display:flex;align-items:flex-start;gap:.7rem;padding:.75rem .85rem;margin:.2rem 0 .7rem;border:1px solid rgba(245,192,66,.42);border-radius:.85rem;background:rgba(245,192,66,.08)}
@@ -228,14 +228,14 @@ nav button.on .ico{filter:none}
 .chat-mention{color:var(--gold);font-weight:700}
 .chat-image{display:block;max-width:100%;max-height:260px;border-radius:.65rem;margin-top:.5rem;object-fit:contain}
 .chat-image-preview{display:flex;align-items:flex-start;gap:.7rem;padding:.65rem;margin:0 0 .45rem;border:1px solid var(--line2);border-radius:.85rem;background:var(--s1)}.chat-image-preview img{width:76px;height:76px;object-fit:cover;border-radius:.55rem;flex:none}.chat-image-preview-info{min-width:0;flex:1}.chat-image-preview-info b{display:block;font-size:.8rem}.chat-image-preview-info small{display:block;color:var(--mut);font-size:.72rem;overflow-wrap:anywhere}.chat-image-preview-actions{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.4rem}.chat-image-preview-actions button{font-size:.72rem;padding:.28rem .55rem}
-.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .4rem);display:flex;align-items:center;gap:.4rem;padding:.3rem .4rem;background:rgba(19,26,38,.97);border:1px solid var(--line2);border-radius:1.25rem;backdrop-filter:blur(12px)}
-.chat-input-shell{flex:1;min-width:0;display:flex;align-items:center;gap:.15rem;min-height:2.25rem;padding:.08rem .3rem;background:var(--s2);border:1px solid var(--line);border-radius:1.2rem}
-.chat-attach{flex:none;width:1.85rem;height:1.85rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
+.chat-compose{position:sticky;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .25rem);display:flex;align-items:center;gap:.3rem;padding:.18rem .3rem;background:rgba(19,26,38,.97);border:1px solid var(--line2);border-radius:1rem;backdrop-filter:blur(12px);transition:bottom .22s ease,padding .22s ease}
+.chat-input-shell{flex:1;min-width:0;display:flex;align-items:center;gap:.1rem;min-height:2rem;padding:.04rem .22rem;background:var(--s2);border:1px solid var(--line);border-radius:1rem}
+.chat-attach{flex:none;width:1.7rem;height:1.7rem;display:grid;place-items:center;border-radius:50%;color:var(--tx2);cursor:pointer;transition:background .2s,color .2s}
 .chat-attach:hover{background:var(--s1);color:var(--gold)}
 .chat-attach svg{width:1.08rem;height:1.08rem;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.chat-compose textarea{flex:1;min-width:0;min-height:1.85rem;height:1.85rem;max-height:4rem;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;border-radius:0;padding:.35rem .25rem;color:var(--tx);font:inherit;font-size:.86rem;line-height:1.2}
+.chat-compose textarea{flex:1;min-width:0;min-height:1.65rem;height:1.65rem;max-height:3.5rem;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;border-radius:0;padding:.35rem .25rem;color:var(--tx);font:inherit;font-size:.86rem;line-height:1.2}
 .chat-compose textarea:focus{outline:0;box-shadow:none}
-.chat-compose .btn{width:2.3rem;height:2.3rem;min-width:2.3rem;flex:none;margin:0;padding:0;border-radius:50%;display:grid;place-items:center;perspective:100px}
+.chat-compose .btn{width:2.05rem;height:2.05rem;min-width:2.05rem;flex:none;margin:0;padding:0;border-radius:50%;display:grid;place-items:center;perspective:100px}
 .chat-compose .btn.gold::after{display:none;animation:none}
 .chat-compose .btn svg{width:1.55rem;height:1.55rem;display:block;overflow:visible;filter:drop-shadow(0 2px 1px rgba(0,0,0,.35));animation:pippulse-send-float 2.4s ease-in-out infinite}
 .chat-compose .btn:active svg{transform:translate3d(1px,2px,0) rotate(8deg) scale(.88);animation:none}
@@ -302,6 +302,10 @@ nav button.on .ico{filter:none}
 
 /* Navigation */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;background:rgba(11,15,23,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav{transition:transform .22s ease,opacity .22s ease}
+body.chat-nav-hidden nav{transform:translateY(110%);opacity:0;pointer-events:none}
+body.chat-nav-hidden .chat-compose{bottom:calc(env(safe-area-inset-bottom) + .3rem)}
+@media(max-height:700px){.chat-feed{max-height:calc(100dvh - 21rem);min-height:140px}.chat-status{display:none}}
 nav div{position:relative;display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:var(--w);height:var(--nav);padding:.4rem}
 .ind{position:absolute;top:.4rem;bottom:.4rem;left:.4rem;width:calc((100% - .8rem)/4);border-radius:.75rem;background:var(--gold-glow);border:1px solid rgba(245,192,66,0.25);transform:translateX(calc(var(--ix,0)*100%));transition:transform .35s var(--ease)}
 nav button{position:relative;z-index:1;background:none;border:0;color:var(--tx2);font:inherit;font-size:.78rem;font-weight:600;display:grid;align-content:center;justify-items:center;gap:.15rem;border-radius:.75rem;cursor:pointer;transition:color .2s}
@@ -785,6 +789,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelec
 const VIEWS=['signals','plans','chat','account'];
 function show(v){
   if(!VIEWS.includes(v))return;
+  if(v!=='chat')document.body.classList.remove('chat-nav-hidden');
   if(v==='chat'&&!S.user){openAuth('login');return}
   /* Update the pre-paint selector as well as the normal hidden states. */
   document.documentElement.setAttribute('data-start-view',v);
@@ -1067,6 +1072,18 @@ function chatQuoteHtml(msg){
   if(!parent)return '';
   return `<button class="chat-quote" data-act="chatJump" data-id="${esc(parent.id)}"><b>↪ Replying to ${esc(parent.author_name||'member')}</b><span>${esc(parent.body||'Photo')}</span></button>`;
 }
+let chatNavLastTop=0;
+function attachChatNavAutoHide(feed){
+  if(!feed)return;
+  chatNavLastTop=feed.scrollTop;
+  feed.addEventListener('scroll',()=>{
+    const top=feed.scrollTop,delta=top-chatNavLastTop;
+    const nearBottom=feed.scrollHeight-top-feed.clientHeight<36;
+    if(nearBottom||delta>3)document.body.classList.remove('chat-nav-hidden');
+    else if(delta< -3&&top>24)document.body.classList.add('chat-nav-hidden');
+    chatNavLastTop=top;
+  },{passive:true});
+}
 function renderChat(){
   const root=$('v-chat');if(!root)return;
   /* Preserve the chat's own scroll position whenever the chat DOM is rebuilt.
@@ -1118,6 +1135,7 @@ function renderChat(){
     if(!feed)return;
     if(!previousFeed||previousWasNearBottom)feed.scrollTop=feed.scrollHeight;
     else feed.scrollTop=Math.min(previousScrollTop,Math.max(0,feed.scrollHeight-feed.clientHeight));
+    attachChatNavAutoHide(feed);
   }));
 }
 async function loadChat({silent=false,keepPosition=false}={}){
