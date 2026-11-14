@@ -520,43 +520,70 @@ html[data-start-view="account"] .ind{transform:translateX(300%)}
 #s-private-chat #private-chat-preview:empty{display:none}
 
 
-/* Community chat — single, coherent messenger layout */
-main:has(#v-chat:not([hidden])){
- height:calc(100dvh - var(--nav) - 4.9rem - env(safe-area-inset-top));min-height:0;
- display:flex;flex-direction:column;
- padding:.55rem max(1rem,env(safe-area-inset-right)) 0 max(1rem,env(safe-area-inset-left));overflow:hidden
+
+/* Community chat: edge-to-edge messenger viewport; composer sits directly above bottom tabs. */
+body.chat-active{padding-bottom:0!important;overflow:hidden}
+body.chat-active main{
+ height:calc(100dvh - var(--nav) - 4.4rem - env(safe-area-inset-top));
+ min-height:0;display:flex;flex-direction:column;overflow:hidden;
+ padding:.45rem max(.85rem,env(safe-area-inset-right)) 0 max(.85rem,env(safe-area-inset-left));
 }
-#v-chat:not([hidden]){flex:1 1 auto;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden}
-#v-chat>.phero{flex:none;padding:.15rem 0}
-#v-chat>.phero h2{font-size:1.55rem;line-height:1.15;letter-spacing:-.025em}
-#v-chat>.phero p{font-size:.82rem;line-height:1.3;margin:.18rem 0 0}
-#v-chat>.chat-intro{display:none}
-#v-chat .chat-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:.35rem;overflow:hidden}
-#v-chat .chat-pinned{flex:none;margin:.25rem 0 .1rem;padding:.5rem .65rem;border-radius:.7rem}
-#v-chat .chat-pinned-body b{font-size:.7rem;margin-bottom:.1rem}
-#v-chat .chat-pinned-body p{font-size:.8rem;line-height:1.3}
-#v-chat .chat-feed{flex:1 1 0;min-height:0;height:auto;max-height:none;display:flex;flex-direction:column;gap:.45rem;overflow-y:auto;overscroll-behavior:contain;padding:.35rem .05rem .55rem;scrollbar-width:thin}
-#v-chat .chat-msg{max-width:88%;padding:.55rem .7rem;border-radius:.85rem .85rem .85rem .2rem;box-shadow:0 1px 1px rgba(0,0,0,.12)}
-#v-chat .chat-msg.mine{border-radius:.85rem .85rem .2rem .85rem}
-#v-chat .chat-meta{gap:.35rem;margin-bottom:.15rem;font-size:.66rem}
-#v-chat .chat-meta b{font-size:.72rem}
-#v-chat .chat-msg p{font-size:.86rem;line-height:1.38}
-#v-chat .chat-image{max-width:min(100%,280px);border-radius:.55rem}
-#v-chat .chat-typing{flex:none;margin:0 .35rem;min-height:0}
-#v-chat .chat-typing:empty{display:none}
-#v-chat .chat-quote{flex:none;margin:.1rem 0;padding:.4rem .6rem}
-#v-chat .chat-image-preview{flex:none;max-height:6.5rem;overflow:hidden;margin:.1rem 0}
-#v-chat .chat-image-preview img{max-height:6rem;object-fit:cover}
-#v-chat .chat-compose{position:relative;inset:auto;flex:none;display:flex;align-items:center;gap:.4rem;min-height:3.25rem;margin:.2rem 0 .35rem;padding:.28rem .38rem;border:1px solid var(--line2);border-radius:1.25rem;background:rgba(28,35,48,.98);box-shadow:0 3px 14px rgba(0,0,0,.22);backdrop-filter:blur(14px)}
-#v-chat .chat-input-shell{flex:1;min-width:0;min-height:2.55rem;display:flex;align-items:center;gap:.25rem;padding:.1rem .35rem;border:0;border-radius:1.1rem;background:transparent}
-#v-chat .chat-attach{width:2rem;height:2rem;flex:none}
-#v-chat .chat-compose textarea{flex:1;min-width:0;height:2.2rem;min-height:2.2rem;max-height:6rem;padding:.4rem .25rem;font-size:.9rem;line-height:1.35;resize:none}
-#v-chat .chat-compose .btn{flex:none;width:2.65rem;height:2.65rem;min-width:2.65rem;border-radius:50%;padding:0}
-#v-chat .chat-compose .btn svg{width:1.8rem;height:1.8rem}
-#v-chat .chat-status{display:none}
-body.chat-nav-hidden nav{transform:translateY(110%);opacity:0;pointer-events:none}
-@media(max-height:700px){main:has(#v-chat:not([hidden])){height:calc(100dvh - var(--nav) - 4.5rem - env(safe-area-inset-top))}#v-chat>.phero h2{font-size:1.4rem}}
-@media(min-width:700px){#v-chat .chat-compose{margin-bottom:.45rem}}
+body.chat-active #v-chat:not([hidden]){
+ flex:1 1 auto;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden;
+}
+body.chat-active #v-chat>.phero{flex:none;padding:.1rem 0 .25rem}
+body.chat-active #v-chat>.phero h2{font-size:1.45rem;line-height:1.12;letter-spacing:-.025em}
+body.chat-active #v-chat>.phero p{font-size:.8rem;line-height:1.25;margin:.15rem 0 0}
+body.chat-active #v-chat>.chat-intro,
+body.chat-active #v-chat .chat-status{display:none!important}
+body.chat-active #v-chat .chat-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:.25rem;overflow:hidden}
+body.chat-active #v-chat .chat-pinned{flex:none;margin:.2rem 0 .1rem;padding:.45rem .65rem;border-radius:.75rem}
+body.chat-active #v-chat .chat-pinned-body b{font-size:.69rem;margin-bottom:.08rem}
+body.chat-active #v-chat .chat-pinned-body p{font-size:.79rem;line-height:1.25}
+body.chat-active #v-chat .chat-feed{
+ flex:1 1 0;min-height:0;height:auto;max-height:none;overflow-y:auto;
+ display:flex;flex-direction:column;gap:.45rem;
+ padding:.25rem .05rem 5.2rem;overscroll-behavior:contain;scrollbar-width:thin;
+}
+body.chat-active #v-chat .chat-msg{max-width:88%;padding:.55rem .7rem;border-radius:.85rem .85rem .85rem .2rem}
+body.chat-active #v-chat .chat-msg.mine{border-radius:.85rem .85rem .2rem .85rem}
+body.chat-active #v-chat .chat-meta{gap:.35rem;margin-bottom:.12rem;font-size:.65rem}
+body.chat-active #v-chat .chat-meta b{font-size:.72rem}
+body.chat-active #v-chat .chat-msg p{font-size:.86rem;line-height:1.35}
+body.chat-active #v-chat .chat-image{max-width:min(100%,280px);border-radius:.55rem}
+body.chat-active #v-chat .chat-typing{flex:none;min-height:0;margin:0 .3rem}
+body.chat-active #v-chat .chat-typing:empty{display:none}
+body.chat-active #v-chat .chat-quote{flex:none;margin:.1rem 0;padding:.4rem .6rem}
+body.chat-active #v-chat .chat-image-preview{position:fixed;left:.75rem;right:.75rem;bottom:calc(var(--nav) + 4.15rem + env(safe-area-inset-bottom));z-index:39;max-height:5.5rem;overflow:hidden}
+body.chat-active #v-chat .chat-image-preview img{max-height:5rem;object-fit:cover}
+body.chat-active #v-chat .chat-compose{
+ position:fixed!important;left:max(.65rem,env(safe-area-inset-left));right:max(.65rem,env(safe-area-inset-right));
+ bottom:calc(var(--nav) + env(safe-area-inset-bottom) + .18rem);
+ z-index:40;width:min(calc(100% - 1.3rem),calc(var(--w) - 1.3rem));
+ min-height:3.15rem;margin:0 auto;padding:.25rem .35rem;
+ display:flex;align-items:center;gap:.35rem;border:1px solid var(--line2);
+ border-radius:1.35rem;background:rgba(28,35,48,.98);
+ box-shadow:0 3px 14px rgba(0,0,0,.25);backdrop-filter:blur(14px);
+}
+body.chat-active #v-chat .chat-input-shell{
+ flex:1;min-width:0;min-height:2.55rem;display:flex;align-items:center;gap:.2rem;
+ padding:.08rem .3rem;border:0;border-radius:1.1rem;background:transparent;
+}
+body.chat-active #v-chat .chat-attach{width:2rem;height:2rem;flex:none}
+body.chat-active #v-chat .chat-compose textarea{
+ flex:1;min-width:0;height:2.2rem;min-height:2.2rem;max-height:5.5rem;
+ padding:.4rem .25rem;font-size:.9rem;line-height:1.3;resize:none;
+}
+body.chat-active #v-chat .chat-compose .btn{
+ flex:none;width:2.65rem;height:2.65rem;min-width:2.65rem;padding:0;border-radius:50%;
+}
+body.chat-active #v-chat .chat-compose .btn svg{width:1.8rem;height:1.8rem}
+body.chat-active.chat-nav-hidden nav{transform:translateY(110%);opacity:0;pointer-events:none}
+body.chat-active.chat-nav-hidden #v-chat .chat-compose{bottom:calc(env(safe-area-inset-bottom) + .18rem)}
+@media(max-height:700px){
+ body.chat-active main{height:calc(100dvh - var(--nav) - 4rem - env(safe-area-inset-top))}
+ body.chat-active #v-chat>.phero h2{font-size:1.32rem}
+}
 
 </style>
 </head>
@@ -829,6 +856,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelec
 const VIEWS=['signals','plans','chat','account'];
 function show(v){
   if(!VIEWS.includes(v))return;
+  document.body.classList.toggle('chat-active',v==='chat');
   if(v!=='chat')document.body.classList.remove('chat-nav-hidden');
   if(v==='chat'&&!S.user){openAuth('login');return}
   /* Update the pre-paint selector as well as the normal hidden states. */
@@ -1142,7 +1170,6 @@ function renderChat(){
   const replyMsg=chatReplyTo?messages.find(m=>m.id===chatReplyTo):null;
   const composerText=editMsg?editMsg.body:draft;
   root.innerHTML=`<div class="phero"><div><h2>Community chat</h2><p>Talk gold, share ideas and connect with the PipPulse community.</p></div></div>
-    <p class="chat-intro">Keep conversations respectful. Mention members with @username. Share trading screenshots responsibly.</p>
     <div class="chat-wrap">
       ${pinned?`<div class="chat-pinned"><div class="chat-pinned-mark">📌</div><div class="chat-pinned-body"><b>PINNED BY PIPPULSE ADMIN · ${esc(pinned.author_name||"Community")}</b><p>${pinned.body?chatText(pinned.body):"📷 Photo message"}</p></div><button type="button" class="chat-pinned-jump" data-act="chatJump" data-id="${esc(pinned.id)}">View</button></div>`:""}
       <div class="chat-feed" id="chat-feed" aria-live="polite">${S.chatLoading?'<div class="empty">Loading conversation…</div>':messages.length?messages.map(m=>{
@@ -1166,7 +1193,6 @@ function renderChat(){
         </div>
         <button class="btn gold" id="chat-send" type="button" data-act="chatSend" aria-label="${editMsg?'Save message':'Send message'}" title="${editMsg?'Save message':'Send message'}"><svg viewBox="0 0 32 32" aria-hidden="true">${editMsg?'<path d="m7 17 6 6L27 9" fill="none" stroke="#5c3900" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"/><path d="m7 15 6 6L27 7" fill="none" stroke="#ffd45c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>':'<defs><linearGradient id="sendGold" x1="4" y1="3" x2="28" y2="29"><stop stop-color="#fff2b0"/><stop offset=".42" stop-color="#ffd45c"/><stop offset="1" stop-color="#d58a13"/></linearGradient><linearGradient id="sendSide" x1="8" y1="8" x2="25" y2="28"><stop stop-color="#b86c08"/><stop offset="1" stop-color="#704006"/></linearGradient></defs><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendSide)" transform="translate(1 2)"/><path d="M28 3 13 17 8 29l-2-10L3 15 28 3Z" fill="url(#sendGold)" stroke="#fff0b0" stroke-width="1.1" stroke-linejoin="round"/><path d="m6 19 22-16-15 14" fill="none" stroke="#fff9d8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m13 17 2 6 4-10" fill="#e7a52c" stroke="#b96f08" stroke-width=".8" stroke-linejoin="round"/>'}</svg></button>
       </form>
-      <p class="chat-status">Images: PNG, JPG or WebP, up to 10 MB. Messages are visible to signed-in members.</p>
     </div>
     <div class="chat-context" id="chat-context" hidden></div>`;
   updateChatTyping();
